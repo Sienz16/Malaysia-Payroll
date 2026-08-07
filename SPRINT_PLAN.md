@@ -43,9 +43,9 @@ Replace approximated rates with verified statutory figures and make
 rate updates a data-only change.
 
 ### Tasks
-- [x] S2.1 Verify EPF rates against KWSP circulars
-- [x] S2.2 Verify SOCSO/EIS against PERKESO wage ceiling tables
-- [x] S2.3 Verify HRDF + minimum wage against gazette
+- [x] S2.1 Verify EPF rates against KWSP circulars ✅ VERIFIED 2026-08-07
+- [x] S2.2 Verify SOCSO/EIS against PERKESO wage ceiling tables ✅ VERIFIED (RM6,000 ceiling, Oct 2024)
+- [x] S2.3 Verify HRDF + minimum wage against gazette ✅ VERIFIED (RM1,700)
 - [x] S2.4 Add `year` param support end-to-end (rates keyed by year)
 - [x] S2.5 Add rate effective-date ranges (from/to)
 
