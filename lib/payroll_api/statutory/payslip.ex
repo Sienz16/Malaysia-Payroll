@@ -2,11 +2,13 @@ defmodule PayrollApi.Statutory.Payslip do
   @moduledoc """
   Full payslip calculation: gross wage -> statutory deductions -> net pay.
 
-  Computes EPF, SOCSO, EIS, HRDF contributions (employee + employer shares)
-  and returns a breakdown ready for the API and the LiveView calculator.
+  Computes EPF, SOCSO, EIS, HRDF contributions (employee + employer shares),
+  monthly PCB (income tax), and returns a breakdown ready for the API and
+  the LiveView calculator.
   """
 
   alias PayrollApi.Statutory.Rates
+  alias PayrollApi.Statutory.Pcb
 
   @doc """
   Calculate a full payslip breakdown.
@@ -15,6 +17,8 @@ defmodule PayrollApi.Statutory.Payslip do
     * `:wage` - gross monthly wage (required)
     * `:include_hrdf` - whether HRDF levy applies (default true)
     * `:year` - rate year (default 2026)
+    * `:married` - spouse tax relief applies (default false)
+    * `:children` - number of children under 18 (default 0)
   """
   def calculate(opts) when is_map(opts) do
     wage = Map.get(opts, :wage)
@@ -38,8 +42,9 @@ defmodule PayrollApi.Statutory.Payslip do
     socso = Rates.socso(wage, rates)
     eis = Rates.eis(wage, rates)
     hrdf = if include_hrdf, do: Rates.hrdf(wage, rates), else: %{employee: 0, employer: 0}
+    pcb = Pcb.monthly(%{wage: wage, married: Map.get(opts, :married, false), children: Map.get(opts, :children, 0), epf_monthly: epf.employee})
 
-    employee_total = epf.employee + socso.employee + eis.employee + hrdf.employee
+    employee_total = epf.employee + socso.employee + eis.employee + hrdf.employee + pcb.monthly_pcb
     employer_total = epf.employer + socso.employer + eis.employer + hrdf.employer
     net_pay = wage - employee_total
 
@@ -52,6 +57,7 @@ defmodule PayrollApi.Statutory.Payslip do
          socso: socso.employee,
          eis: eis.employee,
          hrdf: hrdf.employee,
+         pcb: pcb.monthly_pcb,
          total: round2(employee_total)
        },
        employer_contributions: %{
@@ -60,6 +66,12 @@ defmodule PayrollApi.Statutory.Payslip do
          eis: eis.employer,
          hrdf: hrdf.employer,
          total: round2(employer_total)
+       },
+       tax_details: %{
+         annual_gross: pcb.annual_gross,
+         annual_reliefs: pcb.annual_reliefs,
+         annual_chargeable: pcb.annual_chargeable,
+         annual_tax: pcb.annual_tax
        },
        total_statutory_cost: round2(wage + employer_total),
        net_pay: round2(net_pay),

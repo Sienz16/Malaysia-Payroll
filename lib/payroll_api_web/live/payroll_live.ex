@@ -104,6 +104,7 @@ defmodule PayrollApiWeb.PayrollLive do
                     <tr class="border-b border-slate-100"><td class="py-2 text-slate-600">EPF (11%)</td><td class="py-2 text-right font-medium">RM <%= fmt(@result.employee_contributions.epf) %></td></tr>
                     <tr class="border-b border-slate-100"><td class="py-2 text-slate-600">SOCSO (0.5%)</td><td class="py-2 text-right font-medium">RM <%= fmt(@result.employee_contributions.socso) %></td></tr>
                     <tr class="border-b border-slate-100"><td class="py-2 text-slate-600">EIS (0.2%)</td><td class="py-2 text-right font-medium">RM <%= fmt(@result.employee_contributions.eis) %></td></tr>
+                    <tr class="border-b border-slate-100"><td class="py-2 text-slate-600">PCB (income tax)</td><td class="py-2 text-right font-medium">RM <%= fmt(@result.employee_contributions.pcb) %></td></tr>
                     <tr><td class="py-2 text-slate-600">HRDF</td><td class="py-2 text-right font-medium">RM <%= fmt(@result.employee_contributions.hrdf) %></td></tr>
                   </tbody>
                 </table>
@@ -121,6 +122,28 @@ defmodule PayrollApiWeb.PayrollLive do
                 <div class="mt-3 pt-3 border-t border-slate-200 flex justify-between text-sm font-semibold">
                   <span class="text-slate-700">Total employer cost</span>
                   <span class="text-emerald-700">RM <%= fmt(@result.total_statutory_cost) %></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-200">
+              <h3 class="text-sm font-semibold text-slate-700 mb-2">PCB tax details (annual)</h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div class="bg-slate-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500">Annual gross</p>
+                  <p class="font-semibold text-slate-800">RM <%= fmt(@result.tax_details.annual_gross) %></p>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500">Reliefs</p>
+                  <p class="font-semibold text-slate-800">-RM <%= fmt(@result.tax_details.annual_reliefs) %></p>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500">Chargeable</p>
+                  <p class="font-semibold text-slate-800">RM <%= fmt(@result.tax_details.annual_chargeable) %></p>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500">Annual tax</p>
+                  <p class="font-semibold text-emerald-700">RM <%= fmt(@result.tax_details.annual_tax) %></p>
                 </div>
               </div>
             </div>

@@ -12,10 +12,18 @@ defmodule PayrollApiWeb.ApiController do
 
   @doc "POST /api/v1/calculate-payslip — compute statutory breakdown for a wage"
   def calculate_payslip(conn, %{"wage" => wage} = params) do
-    include_hrdf = parse_bool(params["include_hrdf"])
+    include_hrdf = parse_bool(params["include_hrdf"], true)
     year = parse_year(params["year"])
+    married = parse_bool(params["married"], false)
+    children = parse_int(params["children"], 0)
 
-    case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf, year: year}) do
+    case Payslip.calculate(%{
+           wage: wage,
+           include_hrdf: include_hrdf,
+           year: year,
+           married: married,
+           children: children
+         }) do
       {:ok, result} -> render(conn, :payslip, %{result: result})
       {:error, reason} -> render_error(conn, reason)
     end
@@ -34,10 +42,24 @@ defmodule PayrollApiWeb.ApiController do
     end
   end
 
-  defp parse_bool(nil), do: true
-  defp parse_bool("false"), do: false
-  defp parse_bool(false), do: false
-  defp parse_bool(_), do: true
+  defp parse_bool(nil, default), do: default
+  defp parse_bool("false", _), do: false
+  defp parse_bool(false, _), do: false
+  defp parse_bool("true", _), do: true
+  defp parse_bool(true, _), do: true
+  defp parse_bool(_, default), do: default
+
+  defp parse_int(nil, default), do: default
+  defp parse_int(v, default) when is_integer(v), do: v
+
+  defp parse_int(v, default) when is_binary(v) do
+    case Integer.parse(v) do
+      {n, _} -> n
+      :error -> default
+    end
+  end
+
+  defp parse_int(_, default), do: default
 
   defp render_error(conn, reason) do
     conn

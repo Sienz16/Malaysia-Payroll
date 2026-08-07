@@ -7,8 +7,10 @@ defmodule PayrollApi.Statutory.PayslipTest do
     {:ok, result} = Payslip.calculate(%{wage: 5000})
 
     assert result.wage == 5000
-    assert result.net_pay == 4422.0
-    assert result.employee_contributions.total == 578.0
+    # 5000 - (578 employee EPF/SOCSO/EIS + 110 PCB) = 4312
+    assert result.net_pay == 4312.0
+    assert result.employee_contributions.pcb == 110.0
+    assert result.employee_contributions.total == 688.0
     assert result.employer_contributions.total == 778.0
     assert result.total_statutory_cost == 5778.0
   end
