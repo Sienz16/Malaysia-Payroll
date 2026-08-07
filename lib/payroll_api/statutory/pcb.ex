@@ -47,7 +47,7 @@ defmodule PayrollApi.Statutory.Pcb do
     }
   end
 
-  @doc "Tax rebate for chargeable income <= RM35,000."
+  @doc "Tax rebates (RM400 each) for chargeable income <= RM35,000."
   def rebate_threshold, do: 35_000
   def rebate_amount, do: 400
 
@@ -55,13 +55,12 @@ defmodule PayrollApi.Statutory.Pcb do
   Calculate annual tax for a chargeable income (after reliefs).
 
   Returns `{tax, brackets_applied}`. Uses integer-percent math to avoid
-  floating point drift: each full bracket contributes its cumulative tax,
-  the top partial bracket is computed as `(income - lower) * pct / 100`
-  with rounding to the nearest ringgit for the bracket slice.
+  floating point drift. Applies the individual rebate; the spouse rebate
+  (RM400) also applies when spouse relief was claimed.
   """
   def annual_tax(chargeable) when chargeable <= 0, do: {0.0, []}
 
-  def annual_tax(chargeable) do
+  def annual_tax(chargeable, opts \\ %{}) do
     {tax, applied} =
       brackets()
       |> Enum.reduce_while({0.0, []}, fn {lower, pct, cum}, {acc, list} ->
@@ -74,7 +73,13 @@ defmodule PayrollApi.Statutory.Pcb do
         end
       end)
 
-    rebate = if chargeable <= rebate_threshold(), do: rebate_amount(), else: 0
+    rebate =
+      cond do
+        chargeable > rebate_threshold() -> 0
+        Map.get(opts, :spouse_relief, false) -> rebate_amount() * 2
+        true -> rebate_amount()
+      end
+
     {max(Float.round(tax - rebate, 2), 0.0), Enum.reverse(applied)}
   end
 
@@ -101,7 +106,7 @@ defmodule PayrollApi.Statutory.Pcb do
       (Map.get(opts, :children, 0) * reliefs().child)
 
     chargeable = max(annual_gross - relief_total, 0)
-    {annual_tax_value, _} = annual_tax(chargeable)
+    {annual_tax_value, _} = annual_tax(chargeable, %{spouse_relief: Map.get(opts, :married, false)})
 
     %{
       annual_gross: round2(annual_gross),

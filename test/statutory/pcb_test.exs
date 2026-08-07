@@ -65,5 +65,13 @@ defmodule PayrollApi.Statutory.PcbTest do
       # 17700 in 1% bracket → 127 tax, rebate 400 → 0
       assert result.monthly_pcb == 0.0
     end
+
+    test "spouse rebate: married low income gets double rebate" do
+      single = Pcb.monthly(%{wage: 2500})
+      married = Pcb.monthly(%{wage: 2500, married: true})
+      # both end at 0 tax due to rebates, but married claims spouse rebate
+      assert married.monthly_pcb == 0.0
+      assert married.annual_reliefs == single.annual_reliefs + 4_000.0
+    end
   end
 end

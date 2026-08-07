@@ -17,22 +17,36 @@ defmodule PayrollApi.Statutory.RatesTest do
     assert result.employer == 650.0
   end
 
-  test "socso: real bracket tables for both sides" do
-    # RM5,000 wage → top brackets: employee 31.80, employer 390.05
+  test "socso: Category 1 brackets, RM6,000 ceiling (verified 2024)" do
+    # RM5,000 wage → employee 24.75, employer 84.55
     result = Rates.socso(5_000)
-    assert result.employee == 31.8
-    assert result.employer == 390.05
+    assert result.employee == 24.75
+    assert result.employer == 84.55
 
-    # RM1,500 wage → employee 9.30, employer 146.30
+    # RM1,500 wage → employee 7.25, employer 25.05
     result2 = Rates.socso(1_500)
-    assert result2.employee == 9.3
-    assert result2.employer == 146.3
+    assert result2.employee == 7.25
+    assert result2.employer == 25.05
+
+    # Above ceiling (RM7,000) caps at RM6,000 values
+    result3 = Rates.socso(7_000)
+    assert result3.employee == 29.75
+    assert result3.employer == 101.55
   end
 
-  test "eis: 0.2% each side capped at ceiling" do
-    result = Rates.eis(10_000)
-    assert result.employee == 8.0
-    assert result.employer == 8.0
+  test "socso: Category 2 (60+) employer-only rates" do
+    result = Rates.socso(5_000, nil, %{age_60_plus: true})
+    assert result.employee == 0.0
+    assert result.employer == 60.3
+  end
+
+  test "eis: bracket table, RM6,000 ceiling" do
+    result = Rates.eis(5_000)
+    assert result.employee == 9.9
+    assert result.employer == 9.9
+
+    result2 = Rates.eis(1_500)
+    assert result2.employee == 2.9
   end
 
   test "hrdf: 1% employer only" do

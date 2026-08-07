@@ -27,9 +27,9 @@ defmodule PayrollApiWeb.ApiControllerTest do
     body = json_response(conn, 200)
     assert body["success"] == true
     assert body["data"]["employee_contributions"]["epf"] == 550.0
-    assert body["data"]["employee_contributions"]["socso"] == 31.8
+    assert body["data"]["employee_contributions"]["socso"] == 24.75
     assert body["data"]["employee_contributions"]["pcb"] == 110.0
-    assert body["data"]["net_pay"] == 4300.2
+    assert body["data"]["net_pay"] == 4305.35
   end
 
   test "POST calculate-payslip with married + children reduces PCB", %{conn: conn} do
@@ -97,7 +97,7 @@ defmodule PayrollApiWeb.ApiControllerTest do
 
     ali = Enum.find(results, fn r -> r["name"] == "Ali" end)
     assert ali["ok"] == true
-    assert ali["data"]["net_pay"] == 4300.2
+    assert ali["data"]["net_pay"] == 4305.35
 
     siti = Enum.find(results, fn r -> r["name"] == "Siti" end)
     assert siti["ok"] == true

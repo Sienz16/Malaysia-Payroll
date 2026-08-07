@@ -7,16 +7,17 @@ defmodule PayrollApi.Statutory.PayslipTest do
     {:ok, result} = Payslip.calculate(%{wage: 5000})
 
     assert result.wage == 5000
-    # employee: 550 EPF + 31.80 SOCSO + 8 EIS + 110 PCB = 699.80
-    # 5000 - 699.80 = 4300.20
-    assert result.net_pay == 4300.2
-    assert result.employee_contributions.socso == 31.8
+    # employee: 550 EPF + 24.75 SOCSO + 9.90 EIS + 110 PCB = 694.65
+    # 5000 - 694.65 = 4305.35
+    assert result.net_pay == 4305.35
+    assert result.employee_contributions.socso == 24.75
+    assert result.employee_contributions.eis == 9.9
     assert result.employee_contributions.pcb == 110.0
-    assert result.employee_contributions.total == 699.8
-    # employer: 650 EPF + 390.05 SOCSO + 8 EIS + 50 HRDF = 1098.05
-    assert result.employer_contributions.socso == 390.05
-    assert result.employer_contributions.total == 1098.05
-    assert result.total_statutory_cost == 6098.05
+    assert result.employee_contributions.total == 694.65
+    # employer: 650 EPF + 84.55 SOCSO + 9.90 EIS + 50 HRDF = 794.45
+    assert result.employer_contributions.socso == 84.55
+    assert result.employer_contributions.total == 794.45
+    assert result.total_statutory_cost == 5794.45
   end
 
   test "wage required" do
@@ -34,7 +35,7 @@ defmodule PayrollApi.Statutory.PayslipTest do
   test "include_hrdf false removes HRDF" do
     {:ok, result} = Payslip.calculate(%{wage: 5000, include_hrdf: false})
     assert result.employer_contributions.hrdf == 0
-    # 1098.05 - 50 = 1048.05
-    assert result.employer_contributions.total == 1048.05
+    # 794.45 - 50 = 744.45
+    assert result.employer_contributions.total == 744.45
   end
 end

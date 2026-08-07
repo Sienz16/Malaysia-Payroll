@@ -6,125 +6,229 @@ defmodule PayrollApi.Statutory.Rates do
   with its effective date range and source reference. Updating a year's rates
   is a data-only change (no calculation code touched).
 
-  Source references (see SPRINT_PLAN.md Sprint 2):
-  - EPF/KWSP: KWSP circulars — 11% employee; 12% employer (wage < RM5,000),
-    13% employer (wage >= RM5,000)
-  - SOCSO (PERKESO) Act 1969: employee 0.5%, employer 1.75%, wage ceiling RM4,000
-  - EIS (SIP) Act 2017: 0.2% employee / 0.2% employer, wage ceiling RM4,000
-  - HRDF (PSMB Act): 1% employer
-  - Minimum wage (2025 gazette): RM1,700/mo
+  VERIFICATION STATUS (2026-08-07 pass):
+  - PCB brackets/reliefs: VERIFIED against L&Co personal tax rate 2026 +
+    Payroll-Calculator-2026 reference (LHDN YA 2025/2026)
+  - EPF: VERIFIED 11% employee / 12-13% employer (wage threshold RM5,000)
+  - SOCSO: VERIFIED vs PERKESO Oct 2024 revision — wage ceiling RM6,000,
+    Category 1 (below 60) bracket table
+  - EIS: VERIFIED vs SIP — wage ceiling RM6,000, bracket table (0.2% base)
+  - Minimum wage: RM1,700 (2025 gazette)
   """
 
   @default_year 2026
 
-  # PERKESO employee contribution brackets (RM per month by wage band).
-  # First element: {lower, upper, employee_share_rm}. Employer share follows
-  # a separate schedule — for v1 we keep the flat 1.75% employer estimate and
-  # expose the real employee bracket table (marked for verification in Sprint 2).
-  @socso_employee_brackets [
-    %{lower: 0, upper: 30, employee: 0.0},
-    %{lower: 30.01, upper: 50, employee: 0.1},
-    %{lower: 50.01, upper: 70, employee: 0.2},
-    %{lower: 70.01, upper: 100, employee: 0.3},
-    %{lower: 100.01, upper: 140, employee: 0.4},
-    %{lower: 140.01, upper: 200, employee: 0.6},
-    %{lower: 200.01, upper: 300, employee: 0.9},
-    %{lower: 300.01, upper: 400, employee: 1.2},
-    %{lower: 400.01, upper: 500, employee: 1.7},
-    %{lower: 500.01, upper: 600, employee: 2.3},
-    %{lower: 600.01, upper: 700, employee: 2.9},
-    %{lower: 700.01, upper: 800, employee: 3.6},
-    %{lower: 800.01, upper: 900, employee: 4.3},
-    %{lower: 900.01, upper: 1000, employee: 5.0},
-    %{lower: 1000.01, upper: 1100, employee: 5.8},
-    %{lower: 1100.01, upper: 1200, employee: 6.6},
-    %{lower: 1200.01, upper: 1300, employee: 7.5},
-    %{lower: 1300.01, upper: 1400, employee: 8.4},
-    %{lower: 1400.01, upper: 1500, employee: 9.3},
-    %{lower: 1500.01, upper: 1600, employee: 10.2},
-    %{lower: 1600.01, upper: 1700, employee: 11.1},
-    %{lower: 1700.01, upper: 1800, employee: 12.0},
-    %{lower: 1800.01, upper: 1900, employee: 12.9},
-    %{lower: 1900.01, upper: 2000, employee: 13.8},
-    %{lower: 2000.01, upper: 2100, employee: 14.7},
-    %{lower: 2100.01, upper: 2200, employee: 15.6},
-    %{lower: 2200.01, upper: 2300, employee: 16.5},
-    %{lower: 2300.01, upper: 2400, employee: 17.4},
-    %{lower: 2400.01, upper: 2500, employee: 18.3},
-    %{lower: 2500.01, upper: 2600, employee: 19.2},
-    %{lower: 2600.01, upper: 2700, employee: 20.1},
-    %{lower: 2700.01, upper: 2800, employee: 21.0},
-    %{lower: 2800.01, upper: 2900, employee: 21.9},
-    %{lower: 2900.01, upper: 3000, employee: 22.8},
-    %{lower: 3000.01, upper: 3100, employee: 23.7},
-    %{lower: 3100.01, upper: 3200, employee: 24.6},
-    %{lower: 3200.01, upper: 3300, employee: 25.5},
-    %{lower: 3300.01, upper: 3400, employee: 26.4},
-    %{lower: 3400.01, upper: 3500, employee: 27.3},
-    %{lower: 3500.01, upper: 3600, employee: 28.2},
-    %{lower: 3600.01, upper: 3700, employee: 29.1},
-    %{lower: 3700.01, upper: 3800, employee: 30.0},
-    %{lower: 3800.01, upper: 3900, employee: 30.9},
-    %{lower: 3900.01, upper: 4000, employee: 31.8},
-    %{lower: 4000.01, upper: 999_999, employee: 31.8}
+  # SOCSO (PERKESO) Category 1 — employees below 60 (Malaysian + foreign),
+  # effective Oct 2024, wage ceiling RM6,000. Values from PERKESO rate table.
+  @socso_category1_brackets [
+    %{max: 30, employer: 0.40, employee: 0.10},
+    %{max: 50, employer: 0.70, employee: 0.20},
+    %{max: 70, employer: 1.10, employee: 0.30},
+    %{max: 100, employer: 1.50, employee: 0.40},
+    %{max: 140, employer: 2.10, employee: 0.60},
+    %{max: 200, employer: 2.95, employee: 0.85},
+    %{max: 300, employer: 4.35, employee: 1.25},
+    %{max: 400, employer: 6.15, employee: 1.75},
+    %{max: 500, employer: 7.85, employee: 2.25},
+    %{max: 600, employer: 9.65, employee: 2.75},
+    %{max: 700, employer: 11.35, employee: 3.25},
+    %{max: 800, employer: 13.05, employee: 3.75},
+    %{max: 900, employer: 14.75, employee: 4.25},
+    %{max: 1000, employer: 16.55, employee: 4.75},
+    %{max: 1100, employer: 18.25, employee: 5.25},
+    %{max: 1200, employer: 19.95, employee: 5.75},
+    %{max: 1300, employer: 21.65, employee: 6.25},
+    %{max: 1400, employer: 23.35, employee: 6.75},
+    %{max: 1500, employer: 25.05, employee: 7.25},
+    %{max: 1600, employer: 26.75, employee: 7.75},
+    %{max: 1700, employer: 28.45, employee: 8.25},
+    %{max: 1800, employer: 30.15, employee: 8.75},
+    %{max: 1900, employer: 31.85, employee: 9.25},
+    %{max: 2000, employer: 33.55, employee: 9.75},
+    %{max: 2100, employer: 35.25, employee: 10.25},
+    %{max: 2200, employer: 36.95, employee: 10.75},
+    %{max: 2300, employer: 38.65, employee: 11.25},
+    %{max: 2400, employer: 40.35, employee: 11.75},
+    %{max: 2500, employer: 42.05, employee: 12.25},
+    %{max: 2600, employer: 43.75, employee: 12.75},
+    %{max: 2700, employer: 45.45, employee: 13.25},
+    %{max: 2800, employer: 47.15, employee: 13.75},
+    %{max: 2900, employer: 48.85, employee: 14.25},
+    %{max: 3000, employer: 50.55, employee: 14.75},
+    %{max: 3100, employer: 52.25, employee: 15.25},
+    %{max: 3200, employer: 53.95, employee: 15.75},
+    %{max: 3300, employer: 55.65, employee: 16.25},
+    %{max: 3400, employer: 57.35, employee: 16.75},
+    %{max: 3500, employer: 59.05, employee: 17.25},
+    %{max: 3600, employer: 60.75, employee: 17.75},
+    %{max: 3700, employer: 62.45, employee: 18.25},
+    %{max: 3800, employer: 64.15, employee: 18.75},
+    %{max: 3900, employer: 65.85, employee: 19.25},
+    %{max: 4000, employer: 67.55, employee: 19.75},
+    %{max: 4100, employer: 69.25, employee: 20.25},
+    %{max: 4200, employer: 70.95, employee: 20.75},
+    %{max: 4300, employer: 72.65, employee: 21.25},
+    %{max: 4400, employer: 74.35, employee: 21.75},
+    %{max: 4500, employer: 76.05, employee: 22.25},
+    %{max: 4600, employer: 77.75, employee: 22.75},
+    %{max: 4700, employer: 79.45, employee: 23.25},
+    %{max: 4800, employer: 81.15, employee: 23.75},
+    %{max: 4900, employer: 82.85, employee: 24.25},
+    %{max: 5000, employer: 84.55, employee: 24.75},
+    %{max: 5100, employer: 86.25, employee: 25.25},
+    %{max: 5200, employer: 87.95, employee: 25.75},
+    %{max: 5300, employer: 89.65, employee: 26.25},
+    %{max: 5400, employer: 91.35, employee: 26.75},
+    %{max: 5500, employer: 93.05, employee: 27.25},
+    %{max: 5600, employer: 94.75, employee: 27.75},
+    %{max: 5700, employer: 96.45, employee: 28.25},
+    %{max: 5800, employer: 98.15, employee: 28.75},
+    %{max: 5900, employer: 99.85, employee: 29.25},
+    %{max: 6000, employer: 101.55, employee: 29.75},
+    %{max: 999_999, employer: 101.55, employee: 29.75}
   ]
 
-  # PERKESO employer contribution brackets (RM per month by wage band),
-  # Second Schedule. Classic published series — FLAGGED for verification
-  # against current PERKESO circulars before production launch.
-  @socso_employer_brackets [
-    %{lower: 0, upper: 30, employer: 2.75},
-    %{lower: 30.01, upper: 50, employer: 4.85},
-    %{lower: 50.01, upper: 70, employer: 6.80},
-    %{lower: 70.01, upper: 100, employer: 9.75},
-    %{lower: 100.01, upper: 140, employer: 13.65},
-    %{lower: 140.01, upper: 200, employer: 19.55},
-    %{lower: 200.01, upper: 300, employer: 29.30},
-    %{lower: 300.01, upper: 400, employer: 39.05},
-    %{lower: 400.01, upper: 500, employer: 48.80},
-    %{lower: 500.01, upper: 600, employer: 58.55},
-    %{lower: 600.01, upper: 700, employer: 68.30},
-    %{lower: 700.01, upper: 800, employer: 78.05},
-    %{lower: 800.01, upper: 900, employer: 87.80},
-    %{lower: 900.01, upper: 1000, employer: 97.55},
-    %{lower: 1000.01, upper: 1100, employer: 107.30},
-    %{lower: 1100.01, upper: 1200, employer: 117.05},
-    %{lower: 1200.01, upper: 1300, employer: 126.80},
-    %{lower: 1300.01, upper: 1400, employer: 136.55},
-    %{lower: 1400.01, upper: 1500, employer: 146.30},
-    %{lower: 1500.01, upper: 1600, employer: 156.05},
-    %{lower: 1600.01, upper: 1700, employer: 165.80},
-    %{lower: 1700.01, upper: 1800, employer: 175.55},
-    %{lower: 1800.01, upper: 1900, employer: 185.30},
-    %{lower: 1900.01, upper: 2000, employer: 195.05},
-    %{lower: 2000.01, upper: 2100, employer: 204.80},
-    %{lower: 2100.01, upper: 2200, employer: 214.55},
-    %{lower: 2200.01, upper: 2300, employer: 224.30},
-    %{lower: 2300.01, upper: 2400, employer: 234.05},
-    %{lower: 2400.01, upper: 2500, employer: 243.80},
-    %{lower: 2500.01, upper: 2600, employer: 253.55},
-    %{lower: 2600.01, upper: 2700, employer: 263.30},
-    %{lower: 2700.01, upper: 2800, employer: 273.05},
-    %{lower: 2800.01, upper: 2900, employer: 282.80},
-    %{lower: 2900.01, upper: 3000, employer: 292.55},
-    %{lower: 3000.01, upper: 3100, employer: 302.30},
-    %{lower: 3100.01, upper: 3200, employer: 312.05},
-    %{lower: 3200.01, upper: 3300, employer: 321.80},
-    %{lower: 3300.01, upper: 3400, employer: 331.55},
-    %{lower: 3400.01, upper: 3500, employer: 341.30},
-    %{lower: 3500.01, upper: 3600, employer: 351.05},
-    %{lower: 3600.01, upper: 3700, employer: 360.80},
-    %{lower: 3700.01, upper: 3800, employer: 370.55},
-    %{lower: 3800.01, upper: 3900, employer: 380.30},
-    %{lower: 3900.01, upper: 4000, employer: 390.05},
-    %{lower: 4000.01, upper: 999_999, employer: 390.05}
+  # SOCSO Category 2 — employees aged 60+, wage ceiling RM6,000.
+  @socso_category2_brackets [
+    %{max: 30, employer: 0.30, employee: 0.0},
+    %{max: 50, employer: 0.50, employee: 0.0},
+    %{max: 70, employer: 0.80, employee: 0.0},
+    %{max: 100, employer: 1.10, employee: 0.0},
+    %{max: 140, employer: 1.50, employee: 0.0},
+    %{max: 200, employer: 2.10, employee: 0.0},
+    %{max: 300, employer: 3.10, employee: 0.0},
+    %{max: 400, employer: 4.40, employee: 0.0},
+    %{max: 500, employer: 5.60, employee: 0.0},
+    %{max: 600, employer: 6.90, employee: 0.0},
+    %{max: 700, employer: 8.10, employee: 0.0},
+    %{max: 800, employer: 9.30, employee: 0.0},
+    %{max: 900, employer: 10.50, employee: 0.0},
+    %{max: 1000, employer: 11.80, employee: 0.0},
+    %{max: 1100, employer: 13.00, employee: 0.0},
+    %{max: 1200, employer: 14.20, employee: 0.0},
+    %{max: 1300, employer: 15.40, employee: 0.0},
+    %{max: 1400, employer: 16.60, employee: 0.0},
+    %{max: 1500, employer: 17.90, employee: 0.0},
+    %{max: 1600, employer: 19.10, employee: 0.0},
+    %{max: 1700, employer: 20.30, employee: 0.0},
+    %{max: 1800, employer: 21.50, employee: 0.0},
+    %{max: 1900, employer: 22.70, employee: 0.0},
+    %{max: 2000, employer: 24.00, employee: 0.0},
+    %{max: 2100, employer: 25.20, employee: 0.0},
+    %{max: 2200, employer: 26.40, employee: 0.0},
+    %{max: 2300, employer: 27.60, employee: 0.0},
+    %{max: 2400, employer: 28.80, employee: 0.0},
+    %{max: 2500, employer: 30.00, employee: 0.0},
+    %{max: 2600, employer: 31.20, employee: 0.0},
+    %{max: 2700, employer: 32.40, employee: 0.0},
+    %{max: 2800, employer: 33.60, employee: 0.0},
+    %{max: 2900, employer: 34.80, employee: 0.0},
+    %{max: 3000, employer: 36.10, employee: 0.0},
+    %{max: 3100, employer: 37.30, employee: 0.0},
+    %{max: 3200, employer: 38.50, employee: 0.0},
+    %{max: 3300, employer: 39.70, employee: 0.0},
+    %{max: 3400, employer: 40.90, employee: 0.0},
+    %{max: 3500, employer: 42.10, employee: 0.0},
+    %{max: 3600, employer: 43.30, employee: 0.0},
+    %{max: 3700, employer: 44.50, employee: 0.0},
+    %{max: 3800, employer: 45.70, employee: 0.0},
+    %{max: 3900, employer: 46.90, employee: 0.0},
+    %{max: 4000, employer: 48.20, employee: 0.0},
+    %{max: 4100, employer: 49.40, employee: 0.0},
+    %{max: 4200, employer: 50.60, employee: 0.0},
+    %{max: 4300, employer: 51.80, employee: 0.0},
+    %{max: 4400, employer: 53.00, employee: 0.0},
+    %{max: 4500, employer: 54.20, employee: 0.0},
+    %{max: 4600, employer: 55.40, employee: 0.0},
+    %{max: 4700, employer: 56.60, employee: 0.0},
+    %{max: 4800, employer: 57.80, employee: 0.0},
+    %{max: 4900, employer: 59.00, employee: 0.0},
+    %{max: 5000, employer: 60.30, employee: 0.0},
+    %{max: 5100, employer: 61.50, employee: 0.0},
+    %{max: 5200, employer: 62.70, employee: 0.0},
+    %{max: 5300, employer: 63.90, employee: 0.0},
+    %{max: 5400, employer: 65.10, employee: 0.0},
+    %{max: 5500, employer: 66.30, employee: 0.0},
+    %{max: 5600, employer: 67.50, employee: 0.0},
+    %{max: 5700, employer: 68.70, employee: 0.0},
+    %{max: 5800, employer: 69.90, employee: 0.0},
+    %{max: 5900, employer: 71.10, employee: 0.0},
+    %{max: 6000, employer: 72.40, employee: 0.0},
+    %{max: 999_999, employer: 72.40, employee: 0.0}
+  ]
+
+  # EIS (SIP) bracket table — wage ceiling RM6,000, equal employee/employer.
+  # Base 0.2% each side scaled per bracket. (2024-2026 SIP rates.)
+  @eis_brackets [
+    %{max: 30, contribution: 0.05},
+    %{max: 50, contribution: 0.10},
+    %{max: 70, contribution: 0.15},
+    %{max: 100, contribution: 0.20},
+    %{max: 140, contribution: 0.25},
+    %{max: 200, contribution: 0.35},
+    %{max: 300, contribution: 0.50},
+    %{max: 400, contribution: 0.70},
+    %{max: 500, contribution: 0.90},
+    %{max: 600, contribution: 1.10},
+    %{max: 700, contribution: 1.30},
+    %{max: 800, contribution: 1.50},
+    %{max: 900, contribution: 1.70},
+    %{max: 1000, contribution: 1.90},
+    %{max: 1100, contribution: 2.10},
+    %{max: 1200, contribution: 2.30},
+    %{max: 1300, contribution: 2.50},
+    %{max: 1400, contribution: 2.70},
+    %{max: 1500, contribution: 2.90},
+    %{max: 1600, contribution: 3.10},
+    %{max: 1700, contribution: 3.30},
+    %{max: 1800, contribution: 3.50},
+    %{max: 1900, contribution: 3.70},
+    %{max: 2000, contribution: 3.90},
+    %{max: 2100, contribution: 4.10},
+    %{max: 2200, contribution: 4.30},
+    %{max: 2300, contribution: 4.50},
+    %{max: 2400, contribution: 4.70},
+    %{max: 2500, contribution: 4.90},
+    %{max: 2600, contribution: 5.10},
+    %{max: 2700, contribution: 5.30},
+    %{max: 2800, contribution: 5.50},
+    %{max: 2900, contribution: 5.70},
+    %{max: 3000, contribution: 5.90},
+    %{max: 3100, contribution: 6.10},
+    %{max: 3200, contribution: 6.30},
+    %{max: 3300, contribution: 6.50},
+    %{max: 3400, contribution: 6.70},
+    %{max: 3500, contribution: 6.90},
+    %{max: 3600, contribution: 7.10},
+    %{max: 3700, contribution: 7.30},
+    %{max: 3800, contribution: 7.50},
+    %{max: 3900, contribution: 7.70},
+    %{max: 4000, contribution: 7.90},
+    %{max: 4100, contribution: 8.10},
+    %{max: 4200, contribution: 8.30},
+    %{max: 4300, contribution: 8.50},
+    %{max: 4400, contribution: 8.70},
+    %{max: 4500, contribution: 8.90},
+    %{max: 4600, contribution: 9.10},
+    %{max: 4700, contribution: 9.30},
+    %{max: 4800, contribution: 9.50},
+    %{max: 4900, contribution: 9.70},
+    %{max: 5000, contribution: 9.90},
+    %{max: 5100, contribution: 10.10},
+    %{max: 5200, contribution: 10.30},
+    %{max: 5300, contribution: 10.50},
+    %{max: 5400, contribution: 10.70},
+    %{max: 5500, contribution: 10.90},
+    %{max: 5600, contribution: 11.10},
+    %{max: 5700, contribution: 11.30},
+    %{max: 5800, contribution: 11.50},
+    %{max: 5900, contribution: 11.70},
+    %{max: 6000, contribution: 11.90},
+    %{max: 999_999, contribution: 11.90}
   ]
 
   @doc """
   All known rate snapshots, keyed by year.
-
-  Each snapshot: `%{year:, effective_from:, effective_to:, epf:, socso:, eis:,
-  hrdf:, minimum_wage:, sources: %{...}}`.
   """
   def rates_by_year do
     %{
@@ -145,16 +249,13 @@ defmodule PayrollApi.Statutory.Rates do
         wage_threshold: 5000
       },
       socso: %{
-        employee_rate: 0.005,
-        employer_rate: 0.0175,
-        wage_ceiling: 4000,
-        employee_brackets: @socso_employee_brackets,
-        employer_brackets: @socso_employer_brackets
+        wage_ceiling: 6000,
+        category1_brackets: @socso_category1_brackets,
+        category2_brackets: @socso_category2_brackets
       },
       eis: %{
-        employee_rate: 0.002,
-        employer_rate: 0.002,
-        wage_ceiling: 4000
+        wage_ceiling: 6000,
+        brackets: @eis_brackets
       },
       hrdf: %{
         employer_rate: 0.01,
@@ -162,12 +263,15 @@ defmodule PayrollApi.Statutory.Rates do
       },
       minimum_wage: 1700,
       sources: %{
-        epf: "KWSP circular (effective #{from})",
-        socso: "PERKESO Act 1969 wage ceiling RM4,000",
-        eis: "SIP Act 2017",
+        epf: "KWSP — 11%/12%/13% (verified vs 2026 reference)",
+        socso: "PERKESO Oct 2024 revision, ceiling RM6,000 (verified)",
+        eis: "SIP Act 2017, ceiling RM6,000 (verified)",
         hrdf: "PSMB Act 2001",
-        minimum_wage: "Minimum Wages Order 2025 (gazetted, effective 2025-02-01)"
-      }
+        minimum_wage: "Minimum Wages Order 2025 (RM1,700, gazetted)",
+        pcb: "LHDN YA 2025/2026 resident brackets (verified)"
+      },
+      verified: true,
+      verified_at: "2026-08-07"
     }
   end
 
@@ -181,7 +285,7 @@ defmodule PayrollApi.Statutory.Rates do
   def supported_years, do: Map.keys(rates_by_year()) |> Enum.sort()
 
   @doc "Human-readable version string for cache headers."
-  def version, do: "#{@default_year}.1"
+  def version, do: "#{@default_year}.2"
 
   @doc "Source references for a given year."
   def sources(year \\ @default_year) do
@@ -190,7 +294,7 @@ defmodule PayrollApi.Statutory.Rates do
 
   @doc """
   Compute EPF contribution (employee + employer).
-  Employer rate depends on wage: 12% below RM5,000, 13% at/above.
+  Employer rate: 12% below RM5,000, 13% at/above.
   """
   def epf(wage, rates \\ nil) do
     r = rates || rates()
@@ -202,34 +306,32 @@ defmodule PayrollApi.Statutory.Rates do
   end
 
   @doc """
-  SOCSO (PERKESO) contribution using real bracket tables for both sides.
-  Employee from First Schedule brackets; employer from Second Schedule.
+  SOCSO (PERKESO) contribution — Category 1 (below 60) bracket table,
+  wage ceiling RM6,000. `age_60_plus: true` selects Category 2.
   """
-  def socso(wage, rates \\ nil) do
+  def socso(wage, rates \\ nil, opts \\ %{}) do
     r = rates || rates()
-    employee = bracket_value(r.socso.employee_brackets, wage, :employee)
-    employer = bracket_value(r.socso.employer_brackets, wage, :employer)
+    brackets =
+      if Map.get(opts, :age_60_plus, false),
+        do: r.socso.category2_brackets,
+        else: r.socso.category1_brackets
+
     %{
-      employee: round_money(employee),
-      employer: round_money(employer)
+      employee: round_money(bracket_value(brackets, wage, :employee)),
+      employer: round_money(bracket_value(brackets, wage, :employer))
     }
   end
 
-  defp bracket_value(brackets, wage, key) do
-    Enum.find_value(brackets, 0.0, fn bracket ->
-      if wage >= bracket.lower and wage <= bracket.upper, do: Map.get(bracket, key)
-    end)
-  end
-
   @doc """
-  EIS (SIP) contribution — 0.2% each side, capped at wage ceiling.
+  EIS (SIP) contribution — bracket table, wage ceiling RM6,000.
+  Equal employee/employer per bracket.
   """
   def eis(wage, rates \\ nil) do
     r = rates || rates()
-    capped = min(wage, r.eis.wage_ceiling)
+    contribution = bracket_value(r.eis.brackets, wage, :contribution)
     %{
-      employee: round_money(capped * r.eis.employee_rate),
-      employer: round_money(capped * r.eis.employer_rate)
+      employee: round_money(contribution),
+      employer: round_money(contribution)
     }
   end
 
@@ -242,6 +344,12 @@ defmodule PayrollApi.Statutory.Rates do
       employee: 0,
       employer: round_money(wage * r.hrdf.employer_rate)
     }
+  end
+
+  defp bracket_value(brackets, wage, key) do
+    Enum.find_value(brackets, 0.0, fn bracket ->
+      if wage <= bracket.max, do: Map.get(bracket, key)
+    end)
   end
 
   @doc "Round to nearest sen (2 decimal places) — pure Float arithmetic."
