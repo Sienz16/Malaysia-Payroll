@@ -15,12 +15,27 @@ defmodule PayrollApiWeb.Router do
     plug :fetch_session
   end
 
-  # Public API — no auth for v1 (statutory rates are public data).
+  pipeline :api_auth do
+    plug PayrollApiWeb.Plug.ApiKeyAuth
+    plug PayrollApiWeb.Plug.RateLimit
+  end
+
+  # Public endpoints — no auth.
   scope "/api/v1", PayrollApiWeb do
     pipe_through :api
 
+    get "/health", HealthController, :health
+  end
+
+  # Authenticated API — Bearer key required.
+  scope "/api/v1", PayrollApiWeb do
+    pipe_through [:api, :api_auth]
+
     get "/rates", ApiController, :rates
     post "/calculate-payslip", ApiController, :calculate_payslip
+    get "/keys", KeyController, :index
+    post "/keys", KeyController, :create
+    delete "/keys/:key", KeyController, :delete
   end
 
   # Web UI (LiveView calculator).

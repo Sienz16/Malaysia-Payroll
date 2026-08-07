@@ -50,7 +50,7 @@ defmodule PayrollApiWeb.ApiController do
   defp parse_bool(_, default), do: default
 
   defp parse_int(nil, default), do: default
-  defp parse_int(v, default) when is_integer(v), do: v
+  defp parse_int(v, _default) when is_integer(v), do: v
 
   defp parse_int(v, default) when is_binary(v) do
     case Integer.parse(v) do

@@ -11,6 +11,8 @@ defmodule PayrollApi.Application do
       PayrollApiWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:payroll_api, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: PayrollApi.PubSub},
+      PayrollApi.Keys,
+      PayrollApi.RateLimiter,
       # Start a worker by calling: PayrollApi.Worker.start_link(arg)
       # {PayrollApi.Worker, arg},
       # Start to serve requests, typically the last entry
