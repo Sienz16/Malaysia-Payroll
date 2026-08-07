@@ -101,6 +101,42 @@ lib/payroll_api_web/
 
 Rates are **data, not code**: update `Rates.rates_by_year/0` for a new budget year — no calculation logic changes.
 
+## 📄 Data Sources & Credits
+
+This API contains statutory data (rates, brackets, reliefs) sourced from
+official publications and cross-verified against third-party references.
+**All statutory tables must be verified against official circulars before
+use in production payroll.**
+
+| Data | Source | Status |
+|---|---|---|
+| **EPF/KWSP rates** (11% emp / 12–13% employer) | [KWSP](https://www.kwsp.gov.my) circulars; cross-checked vs [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `epf.json` | ✅ Verified 2026-08-07 |
+| **SOCSO/PERKESO brackets** (Oct 2024 revision, RM6,000 ceiling, Cat 1 & 2) | [PERKESO rate of contribution](https://www.perkeso.gov.my/en/rate-of-contribution.html); cross-checked vs [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `socso.json` | ✅ Verified 2026-08-07 |
+| **EIS/SIP brackets** (RM6,000 ceiling) | SIP Act 2017; cross-checked vs [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `eis.json` | ✅ Verified 2026-08-07 |
+| **PCB income tax** (YA 2025/2026 brackets, reliefs, rebates) | [LHDN tax rates](https://www.hasil.gov.my/en/individual/individual-life-cycle/income-declaration/tax-rate/); cross-checked vs [L&Co Personal Tax Rate 2026](https://landco.my/taxation-en/personal-tax-rate/) and [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `pcb.json` | ✅ Verified 2026-08-07 |
+| **HRDF levy** (1% employer) | PSMB Act 2001 / HRD Corp | ⚠️ Standard rate, verify applicability |
+| **Minimum wage** (RM1,700) | Minimum Wages Order 2025 (gazetted) | ✅ Verified |
+
+### Third-party references used for cross-verification
+
+- [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) (GitHub, `socso.json` / `epf.json` / `eis.json` / `pcb.json`) — primary cross-check for SOCSO/EIS/EPF/PCB tables
+- [L&Co Accountants — Personal Tax Rate 2026](https://landco.my/taxation-en/personal-tax-rate/) — PCB bracket cross-check
+- [PERKESO — Rate of Contribution](https://www.perkeso.gov.my/en/rate-of-contribution.html) — official SOCSO source
+- [LHDN — Tax Rate](https://www.hasil.gov.my/en/individual/individual-life-cycle/income-declaration/tax-rate/) — official PCB source
+- [KWSP](https://www.kwsp.gov.my) — official EPF source
+
+### Data freshness
+
+Rates are stored as year-keyed data in `lib/payroll_api/statutory/rates.ex`.
+A new budget year = a data-only update; calculation code stays untouched.
+Each snapshot carries `verified: true/false` and `verified_at`.
+
+> **Disclaimer:** This API is an engineering tool, not financial or legal
+> advice. Statutory rates change — always confirm against official
+> publications before processing real payroll.
+
+---
+
 ## 📄 License
 
 MIT
