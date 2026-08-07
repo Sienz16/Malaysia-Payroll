@@ -48,6 +48,23 @@ defmodule PayrollApiWeb.ApiController do
     render_error(conn, :invalid_input)
   end
 
+  @doc "GET /api/v1/openapi.yaml — serve the OpenAPI spec"
+  def openapi_spec(conn, _params) do
+    path = Application.app_dir(:payroll_api, "priv/static/openapi.yaml")
+
+    case File.read(path) do
+      {:ok, content} ->
+        conn
+        |> put_resp_content_type("application/yaml")
+        |> send_resp(200, content)
+
+      {:error, _} ->
+        conn
+        |> put_status(404)
+        |> json(%{error: %{message: "openapi spec not found"}})
+    end
+  end
+
   defp parse_year(nil), do: 2026
   defp parse_year(y) when is_integer(y), do: y
   defp parse_year(y) when is_binary(y) do

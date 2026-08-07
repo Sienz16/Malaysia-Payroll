@@ -25,6 +25,7 @@ defmodule PayrollApiWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :health
+    get "/openapi.yaml", ApiController, :openapi_spec
   end
 
   # Authenticated API — Bearer key required.
