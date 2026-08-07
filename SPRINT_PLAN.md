@@ -23,12 +23,12 @@ Implement Monthly PCB (Potongan Cukai Bulanan) calculation so payslip
 includes income tax — the piece that makes the API real for employers.
 
 ### Tasks
-- [ ] S1.1 Research current PCB method (MTD/Method 1 & 2, 2025/2026 budget changes)
-- [ ] S1.2 Build PCB module: monthly tax deduction from annual chargeable income
-- [ ] S1.3 Add tax relief data (individual RM9,000, EPF relief RM4,000, etc.)
-- [ ] S1.4 Add married/children/spouse relief modifiers
-- [ ] S1.5 Integrate PCB into calculate-payslip response
-- [ ] S1.6 Tests: PCB boundaries, bracket edges, relief combos
+- [x] S1.1 Research current PCB method (MTD/Method 1 & 2, 2025/2026 budget changes)
+- [x] S1.2 Build PCB module: monthly tax deduction from annual chargeable income
+- [x] S1.3 Add tax relief data (individual RM9,000, EPF relief RM4,000, etc.)
+- [x] S1.4 Add married/children/spouse relief modifiers
+- [x] S1.5 Integrate PCB into calculate-payslip response
+- [x] S1.6 Tests: PCB boundaries, bracket edges, relief combos
 
 ### Acceptance
 - payslip response includes `pcb` in employee contributions
@@ -43,11 +43,11 @@ Replace approximated rates with verified statutory figures and make
 rate updates a data-only change.
 
 ### Tasks
-- [ ] S2.1 Verify EPF rates against KWSP circulars
-- [ ] S2.2 Verify SOCSO/EIS against PERKESO wage ceiling tables
-- [ ] S2.3 Verify HRDF + minimum wage against gazette
-- [ ] S2.4 Add `year` param support end-to-end (rates keyed by year)
-- [ ] S2.5 Add rate effective-date ranges (from/to)
+- [x] S2.1 Verify EPF rates against KWSP circulars
+- [x] S2.2 Verify SOCSO/EIS against PERKESO wage ceiling tables
+- [x] S2.3 Verify HRDF + minimum wage against gazette
+- [x] S2.4 Add `year` param support end-to-end (rates keyed by year)
+- [x] S2.5 Add rate effective-date ranges (from/to)
 
 ### Acceptance
 - rates/0 returns verified figures with source references
@@ -61,12 +61,12 @@ rate updates a data-only change.
 Make the API safe to expose publicly.
 
 ### Tasks
-- [ ] S3.1 API key auth (Bearer) with per-key usage tracking
-- [ ] S3.2 Rate limiting per key (free tier: e.g. 1,000 req/mo)
-- [ ] S3.3 CORS + security headers
-- [ ] S3.4 Production release build (MIX_ENV=prod)
-- [ ] S3.5 systemd service (auto-start on reboot)
-- [ ] S3.6 Domain + Traefik SSL (payroll.dpnc.my — route already staged)
+- [x] S3.1 API key auth (Bearer) with per-key usage tracking
+- [x] S3.2 Rate limiting per key (free tier: e.g. 1,000 req/mo)
+- [x] S3.3 CORS + security headers
+- [x] S3.4 Production release build (MIX_ENV=prod)
+- [x] S3.5 systemd service (auto-start on reboot)
+- [x] S3.6 Domain + Traefik SSL (payroll.dpnc.my — route already staged)
 
 ### Acceptance
 - unauthenticated requests rejected 401
@@ -81,11 +81,11 @@ Make the API safe to expose publicly.
 Developer-facing polish + LLM discoverability.
 
 ### Tasks
-- [ ] S4.1 README with quickstart, curl examples, pricing tiers
-- [ ] S4.2 OpenAPI spec (openapi.yaml)
-- [ ] S4.3 Live playground page on the docs site
-- [ ] S4.4 Error code reference
-- [ ] S4.5 Changelog + semantic versioning
+- [x] S4.1 README with quickstart, curl examples, pricing tiers
+- [x] S4.2 OpenAPI spec (openapi.yaml)
+- [x] S4.3 Live playground page on the docs site
+- [x] S4.4 Error code reference
+- [x] S4.5 Changelog + semantic versioning
 
 ### Acceptance
 - LLM-friendly docs (clear schema + examples)
@@ -95,11 +95,11 @@ Developer-facing polish + LLM discoverability.
 
 ## Sprint 5 — Extras (v1.1+, optional)
 
-- [ ] S5.1 Bulk payslip (multiple employees one call)
-- [ ] S5.2 Payslip PDF export
-- [ ] S5.3 Employee profile persistence (DB)
-- [ ] S5.4 EIS/SOCSO bracket tables (actual PERKESO brackets, not flat %)
-- [ ] S5.5 i18n (BM + EN responses)
+- [x] S5.1 Bulk payslip (multiple employees one call)
+- [x] S5.2 Payslip PDF export
+- [x] S5.3 Employee profile persistence (DB)
+- [x] S5.4 EIS/SOCSO bracket tables (actual PERKESO brackets, not flat %)
+- [x] S5.5 i18n (BM + EN responses)
 
 ---
 
