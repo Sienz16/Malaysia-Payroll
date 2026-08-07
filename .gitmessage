@@ -1,0 +1,23 @@
+# <type>(<scope>): <subject>
+#
+# Types:
+#   feat     - new feature
+#   fix      - bug fix
+#   docs     - documentation only
+#   style    - formatting, whitespace, no code change
+#   refactor - code change that neither fixes nor adds feature
+#   perf     - performance improvement
+#   test     - adding/updating tests
+#   build    - build system or dependencies
+#   ci       - CI configuration
+#   chore    - maintenance, tooling
+#
+# Scope (optional): which area (e.g. api, liveview, rates, docs)
+#
+# Examples:
+#   feat(api): add POST /calculate-payslip endpoint
+#   fix(rates): correct EPF employer rate boundary at RM5,000
+#   test(payslip): cover missing wage error path
+#   docs: add API usage examples
+#
+# Keep subject under 72 chars, imperative mood, no trailing period.

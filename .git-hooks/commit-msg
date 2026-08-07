@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+# Commit message lint hook — enforces Conventional Commits.
+# See .gitmessage for the convention. Skip with: git commit --no-verify
+
+MSG_FILE="$1"
+MSG=$(grep -v '^#' "$MSG_FILE" | sed '/^$/d' | head -1)
+
+TYPE_PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(\([a-z0-9_-]+\))?!?: .+'
+LENGTH_LIMIT=72
+
+if [ -z "$MSG" ]; then
+  echo "✖ empty commit message. Follow: <type>(<scope>): <subject>" >&2
+  exit 1
+fi
+
+if ! echo "$MSG" | grep -qE "$TYPE_PATTERN"; then
+  echo "✖ bad commit message: '$MSG'" >&2
+  echo "  Expected: <type>(<scope>): <subject>" >&2
+  echo "  Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore" >&2
+  echo "  See .gitmessage for examples." >&2
+  exit 1
+fi
+
+if [ ${#MSG} -gt $LENGTH_LIMIT ]; then
+  echo "✖ subject too long (${#MSG} > $LENGTH_LIMIT chars): '$MSG'" >&2
+  exit 1
+fi
+
+exit 0
