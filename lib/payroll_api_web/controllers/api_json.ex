@@ -7,7 +7,9 @@ defmodule PayrollApiWeb.ApiJSON do
     %{
       success: true,
       version: version,
-      data: rates
+      data: rates,
+      sources: PayrollApi.Statutory.Rates.sources(rates.year),
+      supported_years: PayrollApi.Statutory.Rates.supported_years()
     }
   end
 

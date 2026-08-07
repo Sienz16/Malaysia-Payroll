@@ -1,53 +1,114 @@
 defmodule PayrollApi.Statutory.Rates do
   @moduledoc """
-  Malaysian statutory rates and contribution tables.
+  Malaysian statutory rates and contribution tables — keyed by year.
 
-  Sources:
-  - EPF/KWSP rates: KWSP circulars (2025) — 11% employee / 12% employer (below RM5,000 wage), 13% employer (above)
-  - SOCSO (PERKESO) Act 1969 — employee share 0.5%, employer share 1.75% for wages >= RM4,000/mo;
-    below RM4,000, employer pays per bracket table (approximated per Wage Ceiling RM4,000)
-  - EIS (SIP) Act 2017 — 0.2% employee / 0.2% employer
-  - HRDF (Pembangunan Sumber Manusia Berhad) — 1% employer (for companies registered under PSMB Act)
+  Rates are DATA, not code: every statutory figure lives in `rates_by_year/0`
+  with its effective date range and source reference. Updating a year's rates
+  is a data-only change (no calculation code touched).
 
-  NOTE: These tables are approximations for API development. The authoritative
-  rates come from KWSP/PERKESO circulars which change yearly — the API design
-  keeps rates as data (see `rates/0`) so they can be updated without code changes.
+  Source references (to be verified in Sprint 2 — see SPRINT_PLAN.md):
+  - EPF/KWSP: KWSP circulars — 11% employee; 12% employer (wage < RM5,000),
+    13% employer (wage >= RM5,000)
+  - SOCSO (PERKESO) Act 1969: employee 0.5%, employer 1.75%, wage ceiling RM4,000
+  - EIS (SIP) Act 2017: 0.2% employee / 0.2% employer, wage ceiling RM4,000
+  - HRDF (PSMB Act): 1% employer
+  - Minimum wage (2025 gazette): RM1,700/mo
   """
 
-  @wage_ceiling_socso 4000
-  @wage_ceiling_eis 4000
+  @default_year 2026
 
-  @doc "Current statutory rates snapshot (year)."
-  def rates(year \\ 2026) do
+  @doc """
+  All known rate snapshots, keyed by year.
+
+  Each snapshot: `%{year:, effective_from:, effective_to:, epf:, socso:, eis:,
+  hrdf:, minimum_wage:, sources: %{...}}`.
+  """
+  def rates_by_year do
     %{
-      year: year,
-      epf: %{
-        employee_rate: 0.11,
-        employer_rate_under_5k: 0.12,
-        employer_rate_over_5k: 0.13,
-        wage_threshold: 5000
+      2026 => %{
+        year: 2026,
+        effective_from: "2026-01-01",
+        effective_to: "2026-12-31",
+        epf: %{
+          employee_rate: 0.11,
+          employer_rate_under_5k: 0.12,
+          employer_rate_over_5k: 0.13,
+          wage_threshold: 5000
+        },
+        socso: %{
+          employee_rate: 0.005,
+          employer_rate: 0.0175,
+          wage_ceiling: 4000
+        },
+        eis: %{
+          employee_rate: 0.002,
+          employer_rate: 0.002,
+          wage_ceiling: 4000
+        },
+        hrdf: %{
+          employer_rate: 0.01,
+          applicable: true
+        },
+        minimum_wage: 1700,
+        sources: %{
+          epf: "KWSP circular (effective 2026-01-01)",
+          socso: "PERKESO Act 1969 wage ceiling RM4,000",
+          eis: "SIP Act 2017",
+          hrdf: "PSMB Act 2001",
+          minimum_wage: "Minimum Wages Order 2025 (gazetted, effective 2025-02-01)"
+        }
       },
-      socso: %{
-        employee_rate: 0.005,
-        employer_rate: 0.0175,
-        wage_ceiling: @wage_ceiling_socso
-      },
-      eis: %{
-        employee_rate: 0.002,
-        employer_rate: 0.002,
-        wage_ceiling: @wage_ceiling_eis
-      },
-      hrdf: %{
-        employer_rate: 0.01,
-        applicable: true
-      },
-      minimum_wage: 1700
+      2025 => %{
+        year: 2025,
+        effective_from: "2025-01-01",
+        effective_to: "2025-12-31",
+        epf: %{
+          employee_rate: 0.11,
+          employer_rate_under_5k: 0.12,
+          employer_rate_over_5k: 0.13,
+          wage_threshold: 5000
+        },
+        socso: %{
+          employee_rate: 0.005,
+          employer_rate: 0.0175,
+          wage_ceiling: 4000
+        },
+        eis: %{
+          employee_rate: 0.002,
+          employer_rate: 0.002,
+          wage_ceiling: 4000
+        },
+        hrdf: %{
+          employer_rate: 0.01,
+          applicable: true
+        },
+        minimum_wage: 1700,
+        sources: %{
+          epf: "KWSP circular (effective 2025-01-01)",
+          socso: "PERKESO Act 1969 wage ceiling RM4,000",
+          eis: "SIP Act 2017",
+          hrdf: "PSMB Act 2001",
+          minimum_wage: "Minimum Wages Order 2025 (gazetted, effective 2025-02-01)"
+        }
+      }
     }
   end
 
+  @doc "Current statutory rates snapshot for a year (default current year)."
+  def rates(year \\ @default_year) do
+    rates_by_year()
+    |> Map.get(year, Map.get(rates_by_year(), @default_year))
+  end
+
+  @doc "List of supported years."
+  def supported_years, do: Map.keys(rates_by_year()) |> Enum.sort()
+
   @doc "Human-readable version string for cache headers."
-  def version do
-    "2026.1"
+  def version, do: "#{@default_year}.1"
+
+  @doc "Source references for a given year."
+  def sources(year \\ @default_year) do
+    rates(year).sources
   end
 
   @doc """
