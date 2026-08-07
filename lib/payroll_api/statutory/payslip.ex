@@ -33,6 +33,48 @@ defmodule PayrollApi.Statutory.Payslip do
 
   def calculate(_), do: {:error, :invalid_input}
 
+  @doc """
+  Calculate payslips for multiple employees in one call.
+
+  Accepts `%{employees: [%{name: ..., wage: ..., married: ..., children: ...}]}`
+  plus optional `include_hrdf`/`year` defaults. Returns a list of results.
+  """
+  def calculate_bulk(%{employees: employees} = opts) when is_list(employees) do
+    defaults = %{
+      include_hrdf: Map.get(opts, :include_hrdf, true),
+      year: Map.get(opts, :year, 2026)
+    }
+
+    results =
+      employees
+      |> Enum.with_index(1)
+      |> Enum.map(fn {emp, idx} ->
+        name = emp_value(emp, :name, "Employee #{idx}")
+
+        case calculate(Map.merge(defaults, %{
+               wage: emp_value(emp, :wage, nil),
+               married: emp_value(emp, :married, false),
+               children: emp_value(emp, :children, 0)
+             })) do
+          {:ok, result} -> %{name: name, ok: true, data: result}
+          {:error, reason} -> %{name: name, ok: false, error: reason}
+        end
+      end)
+
+    {:ok, %{count: length(results), results: results}}
+  end
+
+  def calculate_bulk(_), do: {:error, :invalid_input}
+
+  # Fetch a value by atom key, falling back to string key (JSON input).
+  defp emp_value(map, key, default) do
+    cond do
+      Map.has_key?(map, key) -> Map.get(map, key)
+      Map.has_key?(map, Atom.to_string(key)) -> Map.get(map, Atom.to_string(key))
+      true -> default
+    end
+  end
+
   defp do_calculate(wage, opts) do
     year = opts[:year] || 2026
     include_hrdf = Map.get(opts, :include_hrdf, true)

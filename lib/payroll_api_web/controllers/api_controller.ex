@@ -33,6 +33,21 @@ defmodule PayrollApiWeb.ApiController do
     render_error(conn, :wage_required)
   end
 
+  @doc "POST /api/v1/calculate-payslip/bulk — multiple employees in one call"
+  def calculate_payslip_bulk(conn, %{"employees" => employees} = params) do
+    include_hrdf = parse_bool(params["include_hrdf"], true)
+    year = parse_year(params["year"])
+
+    case Payslip.calculate_bulk(%{employees: employees, include_hrdf: include_hrdf, year: year}) do
+      {:ok, result} -> json(conn, %{success: true, data: result})
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  def calculate_payslip_bulk(conn, _params) do
+    render_error(conn, :invalid_input)
+  end
+
   defp parse_year(nil), do: 2026
   defp parse_year(y) when is_integer(y), do: y
   defp parse_year(y) when is_binary(y) do

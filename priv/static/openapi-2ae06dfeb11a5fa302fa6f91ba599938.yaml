@@ -1,0 +1,245 @@
+openapi: 3.1.0
+info:
+  title: Malaysia Payroll Statutory API
+  description: EPF, SOCSO, EIS, HRDF, and PCB calculations for Malaysian payroll.
+  version: 0.2.0
+  contact:
+    name: Sienz16
+  license:
+    name: MIT
+servers:
+  - url: https://payroll.dpnc.my/api/v1
+    description: Production
+  - url: http://localhost:4000/api/v1
+    description: Local dev
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  status: { type: string, example: ok }
+                  version: { type: string, example: "2026.1" }
+  /rates:
+    get:
+      summary: Current statutory rate tables
+      operationId: getRates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer, default: 2026 }
+          description: Rate year
+      responses:
+        "200":
+          description: Rate tables
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      year: { type: integer }
+                      effective_from: { type: string, example: "2026-01-01" }
+                      effective_to: { type: string, example: "2026-12-31" }
+                      epf:
+                        type: object
+                        properties:
+                          employee_rate: { type: number, example: 0.11 }
+                          employer_rate_under_5k: { type: number, example: 0.12 }
+                          employer_rate_over_5k: { type: number, example: 0.13 }
+                          wage_threshold: { type: number, example: 5000 }
+                      socso:
+                        type: object
+                        properties:
+                          employee_rate: { type: number, example: 0.005 }
+                          employer_rate: { type: number, example: 0.0175 }
+                          wage_ceiling: { type: number, example: 4000 }
+                      eis:
+                        type: object
+                        properties:
+                          employee_rate: { type: number, example: 0.002 }
+                          employer_rate: { type: number, example: 0.002 }
+                          wage_ceiling: { type: number, example: 4000 }
+                      hrdf:
+                        type: object
+                        properties:
+                          employer_rate: { type: number, example: 0.01 }
+                          applicable: { type: boolean }
+                      minimum_wage: { type: number, example: 1700 }
+                  sources:
+                    type: object
+                    additionalProperties: { type: string }
+                  supported_years:
+                    type: array
+                    items: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /calculate-payslip:
+    post:
+      summary: Calculate full statutory payslip breakdown
+      operationId: calculatePayslip
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [wage]
+              properties:
+                wage:
+                  type: number
+                  description: Gross monthly wage in RM
+                  example: 5000
+                include_hrdf:
+                  type: boolean
+                  default: true
+                married:
+                  type: boolean
+                  default: false
+                children:
+                  type: integer
+                  default: 0
+                year:
+                  type: integer
+                  default: 2026
+      responses:
+        "200":
+          description: Payslip breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      wage: { type: number }
+                      employee_contributions:
+                        type: object
+                        properties:
+                          epf: { type: number }
+                          socso: { type: number }
+                          eis: { type: number }
+                          hrdf: { type: number }
+                          pcb: { type: number }
+                          total: { type: number }
+                      employer_contributions:
+                        type: object
+                        properties:
+                          epf: { type: number }
+                          socso: { type: number }
+                          eis: { type: number }
+                          hrdf: { type: number }
+                          total: { type: number }
+                      net_pay: { type: number }
+                      total_statutory_cost: { type: number }
+                      tax_details:
+                        type: object
+                        properties:
+                          annual_gross: { type: number }
+                          annual_reliefs: { type: number }
+                          annual_chargeable: { type: number }
+                          annual_tax: { type: number }
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message: { type: string }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /keys:
+    get:
+      summary: List registered API keys (redacted)
+      operationId: listKeys
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Keys list
+    post:
+      summary: Register a new API key
+      operationId: createKey
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key: { type: string, minLength: 8 }
+      responses:
+        "200":
+          description: Key added
+    delete:
+      summary: Remove an API key
+      operationId: deleteKey
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Key removed
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    Unauthorized:
+      description: Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  message: { type: string }
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  message: { type: string }

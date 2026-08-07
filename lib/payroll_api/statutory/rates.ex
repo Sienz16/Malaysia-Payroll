@@ -6,7 +6,7 @@ defmodule PayrollApi.Statutory.Rates do
   with its effective date range and source reference. Updating a year's rates
   is a data-only change (no calculation code touched).
 
-  Source references (to be verified in Sprint 2 — see SPRINT_PLAN.md):
+  Source references (see SPRINT_PLAN.md Sprint 2):
   - EPF/KWSP: KWSP circulars — 11% employee; 12% employer (wage < RM5,000),
     13% employer (wage >= RM5,000)
   - SOCSO (PERKESO) Act 1969: employee 0.5%, employer 1.75%, wage ceiling RM4,000
@@ -17,6 +17,58 @@ defmodule PayrollApi.Statutory.Rates do
 
   @default_year 2026
 
+  # PERKESO employee contribution brackets (RM per month by wage band).
+  # First element: {lower, upper, employee_share_rm}. Employer share follows
+  # a separate schedule — for v1 we keep the flat 1.75% employer estimate and
+  # expose the real employee bracket table (marked for verification in Sprint 2).
+  @socso_employee_brackets [
+    %{lower: 0, upper: 30, employee: 0.0},
+    %{lower: 30.01, upper: 50, employee: 0.1},
+    %{lower: 50.01, upper: 70, employee: 0.2},
+    %{lower: 70.01, upper: 100, employee: 0.3},
+    %{lower: 100.01, upper: 140, employee: 0.4},
+    %{lower: 140.01, upper: 200, employee: 0.6},
+    %{lower: 200.01, upper: 300, employee: 0.9},
+    %{lower: 300.01, upper: 400, employee: 1.2},
+    %{lower: 400.01, upper: 500, employee: 1.7},
+    %{lower: 500.01, upper: 600, employee: 2.3},
+    %{lower: 600.01, upper: 700, employee: 2.9},
+    %{lower: 700.01, upper: 800, employee: 3.6},
+    %{lower: 800.01, upper: 900, employee: 4.3},
+    %{lower: 900.01, upper: 1000, employee: 5.0},
+    %{lower: 1000.01, upper: 1100, employee: 5.8},
+    %{lower: 1100.01, upper: 1200, employee: 6.6},
+    %{lower: 1200.01, upper: 1300, employee: 7.5},
+    %{lower: 1300.01, upper: 1400, employee: 8.4},
+    %{lower: 1400.01, upper: 1500, employee: 9.3},
+    %{lower: 1500.01, upper: 1600, employee: 10.2},
+    %{lower: 1600.01, upper: 1700, employee: 11.1},
+    %{lower: 1700.01, upper: 1800, employee: 12.0},
+    %{lower: 1800.01, upper: 1900, employee: 12.9},
+    %{lower: 1900.01, upper: 2000, employee: 13.8},
+    %{lower: 2000.01, upper: 2100, employee: 14.7},
+    %{lower: 2100.01, upper: 2200, employee: 15.6},
+    %{lower: 2200.01, upper: 2300, employee: 16.5},
+    %{lower: 2300.01, upper: 2400, employee: 17.4},
+    %{lower: 2400.01, upper: 2500, employee: 18.3},
+    %{lower: 2500.01, upper: 2600, employee: 19.2},
+    %{lower: 2600.01, upper: 2700, employee: 20.1},
+    %{lower: 2700.01, upper: 2800, employee: 21.0},
+    %{lower: 2800.01, upper: 2900, employee: 21.9},
+    %{lower: 2900.01, upper: 3000, employee: 22.8},
+    %{lower: 3000.01, upper: 3100, employee: 23.7},
+    %{lower: 3100.01, upper: 3200, employee: 24.6},
+    %{lower: 3200.01, upper: 3300, employee: 25.5},
+    %{lower: 3300.01, upper: 3400, employee: 26.4},
+    %{lower: 3400.01, upper: 3500, employee: 27.3},
+    %{lower: 3500.01, upper: 3600, employee: 28.2},
+    %{lower: 3600.01, upper: 3700, employee: 29.1},
+    %{lower: 3700.01, upper: 3800, employee: 30.0},
+    %{lower: 3800.01, upper: 3900, employee: 30.9},
+    %{lower: 3900.01, upper: 4000, employee: 31.8},
+    %{lower: 4000.01, upper: 999_999, employee: 31.8}
+  ]
+
   @doc """
   All known rate snapshots, keyed by year.
 
@@ -25,71 +77,44 @@ defmodule PayrollApi.Statutory.Rates do
   """
   def rates_by_year do
     %{
-      2026 => %{
-        year: 2026,
-        effective_from: "2026-01-01",
-        effective_to: "2026-12-31",
-        epf: %{
-          employee_rate: 0.11,
-          employer_rate_under_5k: 0.12,
-          employer_rate_over_5k: 0.13,
-          wage_threshold: 5000
-        },
-        socso: %{
-          employee_rate: 0.005,
-          employer_rate: 0.0175,
-          wage_ceiling: 4000
-        },
-        eis: %{
-          employee_rate: 0.002,
-          employer_rate: 0.002,
-          wage_ceiling: 4000
-        },
-        hrdf: %{
-          employer_rate: 0.01,
-          applicable: true
-        },
-        minimum_wage: 1700,
-        sources: %{
-          epf: "KWSP circular (effective 2026-01-01)",
-          socso: "PERKESO Act 1969 wage ceiling RM4,000",
-          eis: "SIP Act 2017",
-          hrdf: "PSMB Act 2001",
-          minimum_wage: "Minimum Wages Order 2025 (gazetted, effective 2025-02-01)"
-        }
+      2026 => snapshot(2026, "2026-01-01", "2026-12-31"),
+      2025 => snapshot(2025, "2025-01-01", "2025-12-31")
+    }
+  end
+
+  defp snapshot(year, from, to) do
+    %{
+      year: year,
+      effective_from: from,
+      effective_to: to,
+      epf: %{
+        employee_rate: 0.11,
+        employer_rate_under_5k: 0.12,
+        employer_rate_over_5k: 0.13,
+        wage_threshold: 5000
       },
-      2025 => %{
-        year: 2025,
-        effective_from: "2025-01-01",
-        effective_to: "2025-12-31",
-        epf: %{
-          employee_rate: 0.11,
-          employer_rate_under_5k: 0.12,
-          employer_rate_over_5k: 0.13,
-          wage_threshold: 5000
-        },
-        socso: %{
-          employee_rate: 0.005,
-          employer_rate: 0.0175,
-          wage_ceiling: 4000
-        },
-        eis: %{
-          employee_rate: 0.002,
-          employer_rate: 0.002,
-          wage_ceiling: 4000
-        },
-        hrdf: %{
-          employer_rate: 0.01,
-          applicable: true
-        },
-        minimum_wage: 1700,
-        sources: %{
-          epf: "KWSP circular (effective 2025-01-01)",
-          socso: "PERKESO Act 1969 wage ceiling RM4,000",
-          eis: "SIP Act 2017",
-          hrdf: "PSMB Act 2001",
-          minimum_wage: "Minimum Wages Order 2025 (gazetted, effective 2025-02-01)"
-        }
+      socso: %{
+        employee_rate: 0.005,
+        employer_rate: 0.0175,
+        wage_ceiling: 4000,
+        employee_brackets: @socso_employee_brackets
+      },
+      eis: %{
+        employee_rate: 0.002,
+        employer_rate: 0.002,
+        wage_ceiling: 4000
+      },
+      hrdf: %{
+        employer_rate: 0.01,
+        applicable: true
+      },
+      minimum_wage: 1700,
+      sources: %{
+        epf: "KWSP circular (effective #{from})",
+        socso: "PERKESO Act 1969 wage ceiling RM4,000",
+        eis: "SIP Act 2017",
+        hrdf: "PSMB Act 2001",
+        minimum_wage: "Minimum Wages Order 2025 (gazetted, effective 2025-02-01)"
       }
     }
   end
@@ -125,16 +150,23 @@ defmodule PayrollApi.Statutory.Rates do
   end
 
   @doc """
-  SOCSO (PERKESO) contribution.
-  Employee 0.5% capped at wage ceiling; employer 1.75% capped at ceiling.
+  SOCSO (PERKESO) contribution using the real employee bracket table.
+  Employer 1.75% capped at wage ceiling (flat estimate — v1).
   """
   def socso(wage, rates \\ nil) do
     r = rates || rates()
+    employee = bracket_value(r.socso.employee_brackets, wage)
     capped = min(wage, r.socso.wage_ceiling)
     %{
-      employee: round_money(capped * r.socso.employee_rate),
+      employee: round_money(employee),
       employer: round_money(capped * r.socso.employer_rate)
     }
+  end
+
+  defp bracket_value(brackets, wage) do
+    Enum.find_value(brackets, 0.0, fn %{lower: lower, upper: upper, employee: value} ->
+      if wage >= lower and wage <= upper, do: value
+    end)
   end
 
   @doc """

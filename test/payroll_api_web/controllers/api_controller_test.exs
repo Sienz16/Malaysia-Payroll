@@ -27,8 +27,9 @@ defmodule PayrollApiWeb.ApiControllerTest do
     body = json_response(conn, 200)
     assert body["success"] == true
     assert body["data"]["employee_contributions"]["epf"] == 550.0
+    assert body["data"]["employee_contributions"]["socso"] == 31.8
     assert body["data"]["employee_contributions"]["pcb"] == 110.0
-    assert body["data"]["net_pay"] == 4312.0
+    assert body["data"]["net_pay"] == 4300.2
   end
 
   test "POST calculate-payslip with married + children reduces PCB", %{conn: conn} do
@@ -53,5 +54,31 @@ defmodule PayrollApiWeb.ApiControllerTest do
     conn = get(conn, ~p"/api/v1/health")
     body = json_response(conn, 200)
     assert body["status"] == "ok"
+  end
+
+  test "POST /api/v1/calculate-payslip/bulk processes multiple employees", %{conn: conn} do
+    conn =
+      post(auth(conn), ~p"/api/v1/calculate-payslip/bulk", %{
+        "employees" => [
+          %{"name" => "Ali", "wage" => 5000},
+          %{"name" => "Siti", "wage" => 3000, "married" => "true", "children" => 1},
+          %{"name" => "Bad", "wage" => -100}
+        ]
+      })
+
+    body = json_response(conn, 200)
+    assert body["success"] == true
+    assert body["data"]["count"] == 3
+    results = body["data"]["results"]
+
+    ali = Enum.find(results, fn r -> r["name"] == "Ali" end)
+    assert ali["ok"] == true
+    assert ali["data"]["net_pay"] == 4300.2
+
+    siti = Enum.find(results, fn r -> r["name"] == "Siti" end)
+    assert siti["ok"] == true
+
+    bad = Enum.find(results, fn r -> r["name"] == "Bad" end)
+    assert bad["ok"] == false
   end
 end

@@ -17,11 +17,15 @@ defmodule PayrollApi.Statutory.RatesTest do
     assert result.employer == 650.0
   end
 
-  test "socso: capped at wage ceiling" do
-    result = Rates.socso(10_000)
-    # capped at 4000: 0.5% = 20, 1.75% = 70
-    assert result.employee == 20.0
+  test "socso: real employee bracket table, employer capped" do
+    # RM5,000 wage → top bracket RM31.80 employee; employer 1.75% of 4000 cap = 70
+    result = Rates.socso(5_000)
+    assert result.employee == 31.8
     assert result.employer == 70.0
+
+    # RM1,500 wage → bracket 9.3
+    result2 = Rates.socso(1_500)
+    assert result2.employee == 9.3
   end
 
   test "eis: 0.2% each side capped at ceiling" do

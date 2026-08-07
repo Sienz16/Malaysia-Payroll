@@ -33,6 +33,7 @@ defmodule PayrollApiWeb.Router do
 
     get "/rates", ApiController, :rates
     post "/calculate-payslip", ApiController, :calculate_payslip
+    post "/calculate-payslip/bulk", ApiController, :calculate_payslip_bulk
     get "/keys", KeyController, :index
     post "/keys", KeyController, :create
     delete "/keys/:key", KeyController, :delete
