@@ -3,11 +3,13 @@ defmodule PayrollApiWeb.ApiController do
 
   alias PayrollApi.Statutory.Payslip
   alias PayrollApi.Statutory.Rates
+  alias PayrollApiWeb.I18n
 
   @doc "GET /api/v1/rates — current statutory rates as JSON"
   def rates(conn, params) do
     year = parse_year(params["year"])
-    render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version()})
+    lang = I18n.lang(params["lang"])
+    render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version(), lang: lang})
   end
 
   @doc "POST /api/v1/calculate-payslip — compute statutory breakdown for a wage"
@@ -16,6 +18,7 @@ defmodule PayrollApiWeb.ApiController do
     year = parse_year(params["year"])
     married = parse_bool(params["married"], false)
     children = parse_int(params["children"], 0)
+    lang = I18n.lang(params["lang"])
 
     case Payslip.calculate(%{
            wage: wage,
@@ -24,7 +27,7 @@ defmodule PayrollApiWeb.ApiController do
            married: married,
            children: children
          }) do
-      {:ok, result} -> render(conn, :payslip, %{result: result})
+      {:ok, result} -> render(conn, :payslip, %{result: result, lang: lang})
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -47,6 +50,42 @@ defmodule PayrollApiWeb.ApiController do
   def calculate_payslip_bulk(conn, _params) do
     render_error(conn, :invalid_input)
   end
+
+  @doc "GET /api/v1/payslip.pdf?wage=5000 — download payslip as PDF"
+  def payslip_pdf(conn, params) do
+    case parse_wage_param(params) do
+      {:ok, wage} ->
+        include_hrdf = parse_bool(params["include_hrdf"], true)
+        year = parse_year(params["year"])
+
+        case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf, year: year}) do
+          {:ok, result} ->
+            pdf = PayrollApi.Pdf.payslip(result)
+
+            conn
+            |> put_resp_content_type("application/pdf")
+            |> put_resp_header("content-disposition", ~s(attachment; filename="payslip-#{wage}.pdf"))
+            |> send_resp(200, pdf)
+
+          {:error, reason} ->
+            render_error(conn, reason)
+        end
+
+      {:error, reason} ->
+        render_error(conn, reason)
+    end
+  end
+
+  defp parse_wage_param(%{"wage" => wage}) when is_number(wage), do: {:ok, wage}
+
+  defp parse_wage_param(%{"wage" => wage}) when is_binary(wage) do
+    case Float.parse(wage) do
+      {w, _} -> {:ok, w}
+      :error -> {:error, :invalid_wage}
+    end
+  end
+
+  defp parse_wage_param(_), do: {:error, :wage_required}
 
   @doc "GET /api/v1/openapi.yaml — serve the OpenAPI spec"
   def openapi_spec(conn, _params) do

@@ -50,10 +50,34 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert json_response(conn, 400)["error"]["message"] =~ "wage"
   end
 
+  test "GET /api/v1/payslip.pdf returns a valid PDF", %{conn: conn} do
+    conn = get(auth(conn), ~p"/api/v1/payslip.pdf?wage=5000")
+    assert conn.status == 200
+    assert List.first(get_resp_header(conn, "content-type")) =~ "application/pdf"
+    body = conn.resp_body
+    assert body |> String.starts_with?("%PDF-1.4")
+    assert body =~ "xref"
+    assert body =~ "%%EOF"
+    assert body =~ "NET PAY"
+  end
+
+  test "GET /api/v1/payslip.pdf missing wage → 400", %{conn: conn} do
+    conn = get(auth(conn), ~p"/api/v1/payslip.pdf")
+    assert json_response(conn, 400)["error"]["message"] =~ "wage"
+  end
+
   test "GET /api/v1/health is public", %{conn: conn} do
     conn = get(conn, ~p"/api/v1/health")
     body = json_response(conn, 200)
     assert body["status"] == "ok"
+  end
+
+  test "POST calculate-payslip with lang=ms returns BM labels", %{conn: conn} do
+    conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000, "lang" => "ms"})
+    body = json_response(conn, 200)
+    assert body["labels"]["net_pay"] == "gaji_bersih"
+    assert body["labels"]["epf"] == "KWSP"
+    assert body["labels"]["socso"] == "PERKESO"
   end
 
   test "POST /api/v1/calculate-payslip/bulk processes multiple employees", %{conn: conn} do

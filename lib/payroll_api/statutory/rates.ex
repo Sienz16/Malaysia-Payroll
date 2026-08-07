@@ -69,6 +69,57 @@ defmodule PayrollApi.Statutory.Rates do
     %{lower: 4000.01, upper: 999_999, employee: 31.8}
   ]
 
+  # PERKESO employer contribution brackets (RM per month by wage band),
+  # Second Schedule. Classic published series — FLAGGED for verification
+  # against current PERKESO circulars before production launch.
+  @socso_employer_brackets [
+    %{lower: 0, upper: 30, employer: 2.75},
+    %{lower: 30.01, upper: 50, employer: 4.85},
+    %{lower: 50.01, upper: 70, employer: 6.80},
+    %{lower: 70.01, upper: 100, employer: 9.75},
+    %{lower: 100.01, upper: 140, employer: 13.65},
+    %{lower: 140.01, upper: 200, employer: 19.55},
+    %{lower: 200.01, upper: 300, employer: 29.30},
+    %{lower: 300.01, upper: 400, employer: 39.05},
+    %{lower: 400.01, upper: 500, employer: 48.80},
+    %{lower: 500.01, upper: 600, employer: 58.55},
+    %{lower: 600.01, upper: 700, employer: 68.30},
+    %{lower: 700.01, upper: 800, employer: 78.05},
+    %{lower: 800.01, upper: 900, employer: 87.80},
+    %{lower: 900.01, upper: 1000, employer: 97.55},
+    %{lower: 1000.01, upper: 1100, employer: 107.30},
+    %{lower: 1100.01, upper: 1200, employer: 117.05},
+    %{lower: 1200.01, upper: 1300, employer: 126.80},
+    %{lower: 1300.01, upper: 1400, employer: 136.55},
+    %{lower: 1400.01, upper: 1500, employer: 146.30},
+    %{lower: 1500.01, upper: 1600, employer: 156.05},
+    %{lower: 1600.01, upper: 1700, employer: 165.80},
+    %{lower: 1700.01, upper: 1800, employer: 175.55},
+    %{lower: 1800.01, upper: 1900, employer: 185.30},
+    %{lower: 1900.01, upper: 2000, employer: 195.05},
+    %{lower: 2000.01, upper: 2100, employer: 204.80},
+    %{lower: 2100.01, upper: 2200, employer: 214.55},
+    %{lower: 2200.01, upper: 2300, employer: 224.30},
+    %{lower: 2300.01, upper: 2400, employer: 234.05},
+    %{lower: 2400.01, upper: 2500, employer: 243.80},
+    %{lower: 2500.01, upper: 2600, employer: 253.55},
+    %{lower: 2600.01, upper: 2700, employer: 263.30},
+    %{lower: 2700.01, upper: 2800, employer: 273.05},
+    %{lower: 2800.01, upper: 2900, employer: 282.80},
+    %{lower: 2900.01, upper: 3000, employer: 292.55},
+    %{lower: 3000.01, upper: 3100, employer: 302.30},
+    %{lower: 3100.01, upper: 3200, employer: 312.05},
+    %{lower: 3200.01, upper: 3300, employer: 321.80},
+    %{lower: 3300.01, upper: 3400, employer: 331.55},
+    %{lower: 3400.01, upper: 3500, employer: 341.30},
+    %{lower: 3500.01, upper: 3600, employer: 351.05},
+    %{lower: 3600.01, upper: 3700, employer: 360.80},
+    %{lower: 3700.01, upper: 3800, employer: 370.55},
+    %{lower: 3800.01, upper: 3900, employer: 380.30},
+    %{lower: 3900.01, upper: 4000, employer: 390.05},
+    %{lower: 4000.01, upper: 999_999, employer: 390.05}
+  ]
+
   @doc """
   All known rate snapshots, keyed by year.
 
@@ -97,7 +148,8 @@ defmodule PayrollApi.Statutory.Rates do
         employee_rate: 0.005,
         employer_rate: 0.0175,
         wage_ceiling: 4000,
-        employee_brackets: @socso_employee_brackets
+        employee_brackets: @socso_employee_brackets,
+        employer_brackets: @socso_employer_brackets
       },
       eis: %{
         employee_rate: 0.002,
@@ -150,22 +202,22 @@ defmodule PayrollApi.Statutory.Rates do
   end
 
   @doc """
-  SOCSO (PERKESO) contribution using the real employee bracket table.
-  Employer 1.75% capped at wage ceiling (flat estimate — v1).
+  SOCSO (PERKESO) contribution using real bracket tables for both sides.
+  Employee from First Schedule brackets; employer from Second Schedule.
   """
   def socso(wage, rates \\ nil) do
     r = rates || rates()
-    employee = bracket_value(r.socso.employee_brackets, wage)
-    capped = min(wage, r.socso.wage_ceiling)
+    employee = bracket_value(r.socso.employee_brackets, wage, :employee)
+    employer = bracket_value(r.socso.employer_brackets, wage, :employer)
     %{
       employee: round_money(employee),
-      employer: round_money(capped * r.socso.employer_rate)
+      employer: round_money(employer)
     }
   end
 
-  defp bracket_value(brackets, wage) do
-    Enum.find_value(brackets, 0.0, fn %{lower: lower, upper: upper, employee: value} ->
-      if wage >= lower and wage <= upper, do: value
+  defp bracket_value(brackets, wage, key) do
+    Enum.find_value(brackets, 0.0, fn bracket ->
+      if wage >= bracket.lower and wage <= bracket.upper, do: Map.get(bracket, key)
     end)
   end
 
