@@ -79,7 +79,8 @@ curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
 # Elixir 1.18+ / OTP 25+ required
 mix deps.get
 mix phx.server          # http://localhost:4000
-mix test                # 30+ tests
+mix test                # 101 tests
+mix precommit           # compile --warnings-as-errors + format + tests
 ```
 
 ## 📐 Architecture

@@ -9,6 +9,7 @@ defmodule PayrollApi.Statutory.Payslip do
 
   alias PayrollApi.Statutory.Rates
   alias PayrollApi.Statutory.Pcb
+  alias PayrollApi.Statutory.Money
 
   @doc """
   Calculate a full payslip breakdown.
@@ -28,6 +29,7 @@ defmodule PayrollApi.Statutory.Payslip do
       is_nil(wage) -> {:error, :wage_required}
       not is_number(wage) -> {:error, :invalid_wage}
       wage < 0 -> {:error, :negative_wage}
+      wage == 0 -> {:error, :zero_wage}
       not is_integer(children) or children < 0 -> {:error, :invalid_children}
       true -> do_calculate(wage, opts)
     end
@@ -35,13 +37,28 @@ defmodule PayrollApi.Statutory.Payslip do
 
   def calculate(_), do: {:error, :invalid_input}
 
+  @max_bulk_employees 500
+
   @doc """
   Calculate payslips for multiple employees in one call.
 
   Accepts `%{employees: [%{name: ..., wage: ..., married: ..., children: ...}]}`
   plus optional `include_hrdf`/`year` defaults. Returns a list of results.
+
+  The batch is capped at #{@max_bulk_employees} employees; larger batches
+  return `{:error, :bulk_too_large}` without touching the calculator.
   """
   def calculate_bulk(%{employees: employees} = opts) when is_list(employees) do
+    if length(employees) > @max_bulk_employees do
+      {:error, :bulk_too_large}
+    else
+      calculate_bulk_rows(employees, opts)
+    end
+  end
+
+  def calculate_bulk(_), do: {:error, :invalid_input}
+
+  defp calculate_bulk_rows(employees, opts) do
     defaults = %{
       include_hrdf: Map.get(opts, :include_hrdf, true),
       year: Map.get(opts, :year, 2026)
@@ -54,15 +71,21 @@ defmodule PayrollApi.Statutory.Payslip do
         if is_map(emp) do
           name = emp_value(emp, :name, "Employee #{idx}")
 
-          case calculate(
-                 Map.merge(defaults, %{
-                   wage: emp_value(emp, :wage, nil),
-                   married: emp_value(emp, :married, false),
-                   children: emp_value(emp, :children, 0)
-                 })
-               ) do
-            {:ok, result} -> %{name: name, ok: true, data: result}
-            {:error, reason} -> %{name: name, ok: false, error: reason}
+          case normalize_wage(emp_value(emp, :wage, nil)) do
+            {:ok, wage} ->
+              case calculate(
+                     Map.merge(defaults, %{
+                       wage: wage,
+                       married: emp_value(emp, :married, false),
+                       children: emp_value(emp, :children, 0)
+                     })
+                   ) do
+                {:ok, result} -> %{name: name, ok: true, data: result}
+                {:error, reason} -> %{name: name, ok: false, error: reason}
+              end
+
+            {:error, reason} ->
+              %{name: name, ok: false, error: reason}
           end
         else
           %{name: "Employee #{idx}", ok: false, error: :invalid_input}
@@ -72,7 +95,18 @@ defmodule PayrollApi.Statutory.Payslip do
     {:ok, %{count: length(results), results: results}}
   end
 
-  def calculate_bulk(_), do: {:error, :invalid_input}
+  # Same wage contract as the API boundary: numbers pass through, complete
+  # numeric strings convert, anything else is a row error.
+  defp normalize_wage(wage) when is_number(wage), do: {:ok, wage}
+
+  defp normalize_wage(wage) when is_binary(wage) do
+    case Float.parse(wage) do
+      {w, ""} -> {:ok, w}
+      _ -> {:error, :invalid_wage}
+    end
+  end
+
+  defp normalize_wage(_), do: {:error, :invalid_wage}
 
   # Fetch a value by atom key, falling back to string key (JSON input).
   defp emp_value(map, key, default) do
@@ -103,8 +137,13 @@ defmodule PayrollApi.Statutory.Payslip do
         age_60_plus: Map.get(opts, :age_60_plus, false)
       )
 
-    socso = Rates.socso(wage, rates)
-    eis = Rates.eis(wage, rates)
+    socso = Rates.socso(wage, rates, %{age_60_plus: Map.get(opts, :age_60_plus, false)})
+
+    eis =
+      Rates.eis(wage, rates,
+        age_60_plus: Map.get(opts, :age_60_plus, false),
+        citizenship: Map.get(opts, :citizenship, :malaysian)
+      )
 
     hrdf =
       if include_hrdf,
@@ -120,11 +159,26 @@ defmodule PayrollApi.Statutory.Payslip do
         rates: rates
       })
 
-    employee_total =
-      epf.employee + socso.employee + eis.employee + hrdf.employee + pcb.monthly_pcb
+    employee_total_sen =
+      Money.sum([
+        Money.to_sen(epf.employee),
+        Money.to_sen(socso.employee),
+        Money.to_sen(eis.employee),
+        Money.to_sen(hrdf.employee),
+        Money.to_sen(pcb.monthly_pcb)
+      ])
 
-    employer_total = epf.employer + socso.employer + eis.employer + hrdf.employer
-    net_pay = wage - employee_total
+    employer_total_sen =
+      Money.sum([
+        Money.to_sen(epf.employer),
+        Money.to_sen(socso.employer),
+        Money.to_sen(eis.employer),
+        Money.to_sen(hrdf.employer)
+      ])
+
+    employee_total = Money.to_ringgit(employee_total_sen)
+    employer_total = Money.to_ringgit(employer_total_sen)
+    net_pay = Money.to_ringgit(Money.sub(Money.to_sen(wage), employee_total_sen))
 
     {:ok,
      %{
@@ -136,14 +190,14 @@ defmodule PayrollApi.Statutory.Payslip do
          eis: eis.employee,
          hrdf: hrdf.employee,
          pcb: pcb.monthly_pcb,
-         total: round2(employee_total)
+         total: employee_total
        },
        employer_contributions: %{
          epf: epf.employer,
          socso: socso.employer,
          eis: eis.employer,
          hrdf: hrdf.employer,
-         total: round2(employer_total)
+         total: employer_total
        },
        tax_details: %{
          annual_gross: pcb.annual_gross,
@@ -151,11 +205,9 @@ defmodule PayrollApi.Statutory.Payslip do
          annual_chargeable: pcb.annual_chargeable,
          annual_tax: pcb.annual_tax
        },
-       total_statutory_cost: round2(wage + employer_total),
-       net_pay: round2(net_pay),
+       total_statutory_cost: Money.to_ringgit(Money.add(Money.to_sen(wage), employer_total_sen)),
+       net_pay: net_pay,
        rates_version: Rates.version()
      }}
   end
-
-  defp round2(v), do: Float.round(v, 2)
 end

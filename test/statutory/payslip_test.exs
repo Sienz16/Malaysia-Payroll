@@ -28,6 +28,26 @@ defmodule PayrollApi.Statutory.PayslipTest do
     assert {:error, :negative_wage} = Payslip.calculate(%{wage: -100})
   end
 
+  test "zero wage rejected instead of creating impossible deductions" do
+    assert {:error, :zero_wage} = Payslip.calculate(%{wage: 0})
+    assert {:error, :zero_wage} = Payslip.calculate(%{wage: 0.0})
+  end
+
+  test "bulk row with zero wage gets a row error, not a negative payslip" do
+    assert {:ok, %{results: [%{ok: false, error: :zero_wage}]}} =
+             Payslip.calculate_bulk(%{employees: [%{wage: 0}]})
+  end
+
+  test "bulk batch over 500 employees rejected without calculation" do
+    employees = Enum.map(1..501, fn i -> %{wage: 5000, name: "E#{i}"} end)
+    assert {:error, :bulk_too_large} = Payslip.calculate_bulk(%{employees: employees})
+  end
+
+  test "bulk batch exactly at limit still processes" do
+    employees = Enum.map(1..500, fn _ -> %{wage: 5000} end)
+    assert {:ok, %{count: 500}} = Payslip.calculate_bulk(%{employees: employees})
+  end
+
   test "unsupported year rejected at domain boundary" do
     assert {:error, :unsupported_year} = Payslip.calculate(%{wage: 5000, year: 2099})
   end
@@ -50,5 +70,41 @@ defmodule PayrollApi.Statutory.PayslipTest do
     assert result.employer_contributions.hrdf == 0
     # 794.45 - 50 = 744.45
     assert result.employer_contributions.total == 744.45
+  end
+
+  describe "employee statutory profile reaches payslip (PAY-006)" do
+    test "age 60+ uses SOCSO Category 2 (no employee share) and zero EIS" do
+      {:ok, result} = Payslip.calculate(%{wage: 5000, age_60_plus: true})
+
+      # Category 2 at RM5,000: employer 60.30, employee 0.00
+      assert result.employee_contributions.socso == 0.0
+      assert result.employer_contributions.socso == 60.3
+      # EIS does not cover 60+ (SIP Act 2017)
+      assert result.employee_contributions.eis == 0.0
+      assert result.employer_contributions.eis == 0.0
+      # EPF 60+: employee 0%, employer 4%
+      assert result.employee_contributions.epf == 0.0
+      assert result.employer_contributions.epf == 200.0
+    end
+
+    test "non-Malaysian profile: flat EPF 2%/2%, zero EIS" do
+      {:ok, result} = Payslip.calculate(%{wage: 5000, citizenship: :non_malaysian})
+
+      # EPF non-Malaysian: 2% employee + 2% employer
+      assert result.employee_contributions.epf == 100.0
+      assert result.employer_contributions.epf == 100.0
+      # EIS excludes foreign workers
+      assert result.employee_contributions.eis == 0.0
+      assert result.employer_contributions.eis == 0.0
+      # SOCSO Category 1 still applies to foreign workers below 60
+      assert result.employee_contributions.socso == 24.75
+    end
+
+    test "default Malaysian below 60 keeps full EIS and Category 1 SOCSO" do
+      {:ok, result} = Payslip.calculate(%{wage: 5000})
+      assert result.employee_contributions.eis == 9.9
+      assert result.employee_contributions.socso == 24.75
+      assert result.employee_contributions.epf == 550.0
+    end
   end
 end

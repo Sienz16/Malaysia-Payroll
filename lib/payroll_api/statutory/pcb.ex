@@ -12,11 +12,16 @@ defmodule PayrollApi.Statutory.Pcb do
     4. Deduct rebate (RM400 if chargeable income <= RM35,000)
     5. Monthly PCB = annual tax / 12 (Method 1, no zakat handling here)
 
+  All arithmetic is done in integer sen (see `PayrollApi.Statutory.Money`);
+  ringgit floats appear only at the public boundary.
+
   NOTE: Rates/brackets are YA 2025 LHDN resident rates and live as data
   (see `brackets/0` and `reliefs/0`) so they can be updated per budget year.
   Full MTD also includes Method 2 (additional remuneration) — out of scope
   for v1.
   """
+
+  alias PayrollApi.Statutory.Money
 
   @doc "YA 2025 resident income tax brackets: {lower_exclusive, rate_pct, cumulative_tax_at_lower}"
   def brackets, do: brackets(nil)
@@ -69,35 +74,44 @@ defmodule PayrollApi.Statutory.Pcb do
   @doc """
   Calculate annual tax for a chargeable income (after reliefs).
 
-  Returns `{tax, brackets_applied}`. Uses integer-percent math to avoid
-  floating point drift. Applies the individual rebate; the spouse rebate
+  Returns `{tax, brackets_applied}` in ringgit (float, 2 dp). Internal
+  arithmetic is integer sen. Applies the individual rebate; the spouse rebate
   (RM400) also applies when spouse relief was claimed.
   """
-  def annual_tax(chargeable) when chargeable <= 0, do: {0.0, []}
+  def annual_tax(chargeable) when is_number(chargeable) and chargeable <= 0, do: {0.0, []}
 
-  def annual_tax(chargeable, opts \\ %{}) do
+  def annual_tax(chargeable, opts \\ %{}) when is_number(chargeable) do
+    {tax_sen, applied} = annual_tax_sen(Money.to_sen(chargeable), opts)
+    {Money.to_ringgit(tax_sen), applied}
+  end
+
+  # Integer-sen core. Returns {tax_sen, brackets_applied}.
+  defp annual_tax_sen(chargeable_sen, _opts) when chargeable_sen <= 0, do: {0, []}
+
+  defp annual_tax_sen(chargeable_sen, opts) do
     rates = Map.get(opts, :rates)
 
-    {tax, applied} =
+    {tax_sen, applied} =
       brackets(rates)
-      |> Enum.reduce_while({0.0, []}, fn {lower, pct, cum}, {acc, list} ->
-        # Only the bracket the income falls INTO contributes:
-        # cum (tax on all lower brackets) + marginal slice above its lower bound.
-        if chargeable > lower do
-          {:cont, {cum + (chargeable - lower) * pct / 100, [{lower, pct, cum} | list]}}
+      |> Enum.reduce_while({0, []}, fn {lower_rm, pct, cum_rm}, {acc, list} ->
+        lower_sen = Money.to_sen(lower_rm)
+
+        if chargeable_sen > lower_sen do
+          marginal_sen = Money.percentage(chargeable_sen - lower_sen, pct, 100)
+          {:cont, {Money.to_sen(cum_rm) + marginal_sen, [{lower_rm, pct, cum_rm} | list]}}
         else
           {:halt, {acc, list}}
         end
       end)
 
-    rebate =
+    rebate_sen =
       cond do
-        chargeable > rebate_threshold(rates) -> 0
-        Map.get(opts, :spouse_relief, false) -> rebate_amount(rates) * 2
-        true -> rebate_amount(rates)
+        chargeable_sen > Money.to_sen(rebate_threshold(rates)) -> 0
+        Map.get(opts, :spouse_relief, false) -> Money.to_sen(rebate_amount(rates)) * 2
+        true -> Money.to_sen(rebate_amount(rates))
       end
 
-    {max(Float.round(tax - rebate, 2), 0.0), Enum.reverse(applied)}
+    {max(tax_sen - rebate_sen, 0), Enum.reverse(applied)}
   end
 
   @doc """
@@ -123,32 +137,38 @@ defmodule PayrollApi.Statutory.Pcb do
 
   defp monthly_valid(opts, wage, children) do
     r = Map.get(opts, :rates, PayrollApi.Statutory.Rates.rates())
-    epf_monthly = Map.get(opts, :epf_monthly, wage * r.epf.employee_rate)
+    wage_sen = Money.to_sen(wage)
+
+    epf_monthly_sen =
+      opts
+      |> Map.get(:epf_monthly, wage * r.epf.employee_rate)
+      |> Money.to_sen()
+
     spouse_eligible = Map.get(opts, :spouse_eligible, false)
-
-    annual_gross = wage * 12
-    epf_annual = min(epf_monthly * 12, reliefs().epf)
-
     reliefs = reliefs(r)
 
-    relief_total =
-      reliefs.individual + epf_annual +
-        if(spouse_eligible, do: reliefs.spouse, else: 0) + children * reliefs.child
+    annual_gross_sen = wage_sen * 12
+    epf_annual_sen = min(epf_monthly_sen * 12, Money.to_sen(reliefs.epf))
 
-    chargeable = max(annual_gross - relief_total, 0)
+    relief_total_sen =
+      Money.to_sen(reliefs.individual) + epf_annual_sen +
+        if(spouse_eligible, do: Money.to_sen(reliefs.spouse), else: 0) +
+        children * Money.to_sen(reliefs.child)
 
-    {annual_tax_value, _} =
-      annual_tax(chargeable, %{spouse_relief: spouse_eligible, rates: r})
+    chargeable_sen = max(annual_gross_sen - relief_total_sen, 0)
+
+    {annual_tax_sen_value, _} =
+      annual_tax_sen(chargeable_sen, %{spouse_relief: spouse_eligible, rates: r})
+
+    # Monthly PCB = annual tax / 12, rounded to the nearest sen (half up).
+    monthly_pcb_sen = div(annual_tax_sen_value + 6, 12)
 
     %{
-      annual_gross: round2(annual_gross),
-      annual_reliefs: round2(relief_total),
-      annual_chargeable: round2(chargeable),
-      annual_tax: round2(annual_tax_value),
-      monthly_pcb: round2(annual_tax_value / 12)
+      annual_gross: Money.to_ringgit(annual_gross_sen),
+      annual_reliefs: Money.to_ringgit(relief_total_sen),
+      annual_chargeable: Money.to_ringgit(chargeable_sen),
+      annual_tax: Money.to_ringgit(annual_tax_sen_value),
+      monthly_pcb: Money.to_ringgit(monthly_pcb_sen)
     }
   end
-
-  defp round2(v) when is_integer(v), do: v * 1.0
-  defp round2(v) when is_float(v), do: Float.round(v, 2)
 end

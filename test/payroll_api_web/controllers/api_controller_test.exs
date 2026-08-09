@@ -12,6 +12,32 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert json_response(conn, 401)["error"]["message"] =~ "API key"
   end
 
+  test "no tenant boundary: every valid key sees identical data (documented SEC-002)", %{
+    conn: conn
+  } do
+    # There is no employer tenancy today: any valid key can read any data.
+    # These tests pin the current behavior so introducing a tenant boundary
+    # requires deliberately changing them. See docs/audits/current-backlog.md
+    # SEC-002 for the documented limitation.
+    PayrollApi.Keys.add("tenant-a-key-000")
+    PayrollApi.Keys.add("tenant-b-key-111")
+
+    key_a = put_req_header(conn, "authorization", "Bearer tenant-a-key-000")
+    key_b = put_req_header(conn, "authorization", "Bearer tenant-b-key-111")
+
+    a = get(key_a, ~p"/api/v1/rates?year=2026") |> json_response(200)
+    b = get(key_b, ~p"/api/v1/rates?year=2026") |> json_response(200)
+
+    assert a["data"] == b["data"]
+  end
+
+  test "plain key cannot administer keys (admin boundary enforced)", %{conn: conn} do
+    PayrollApi.Keys.add("plain-key-999")
+    conn = put_req_header(conn, "authorization", "Bearer plain-key-999")
+    conn = get(conn, ~p"/api/v1/keys")
+    assert json_response(conn, 403)["error"]["message"] =~ "admin key"
+  end
+
   test "GET /api/v1/rates with auth returns rate tables", %{conn: conn} do
     conn = get(auth(conn), ~p"/api/v1/rates")
     body = json_response(conn, 200)
@@ -61,6 +87,43 @@ defmodule PayrollApiWeb.ApiControllerTest do
 
   test "POST calculate-payslip missing wage → 400", %{conn: conn} do
     conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{})
+    assert json_response(conn, 400)["error"]["message"] =~ "wage"
+  end
+
+  test "POST calculate-payslip zero wage → 400", %{conn: conn} do
+    conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 0})
+    assert json_response(conn, 400)["error"]["message"] =~ "greater than zero"
+  end
+
+  test "children trailing garbage rejected instead of defaulting", %{conn: conn} do
+    conn =
+      post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000, "children" => "2abc"})
+
+    assert json_response(conn, 400)["error"]["message"] =~ "children"
+
+    conn =
+      post(auth(build_conn()), ~p"/api/v1/calculate-payslip", %{
+        "wage" => 5000,
+        "children" => "2.5"
+      })
+
+    assert json_response(conn, 400)["error"]["message"] =~ "children"
+  end
+
+  test "negative children rejected", %{conn: conn} do
+    conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000, "children" => -1})
+    assert json_response(conn, 400)["error"]["message"] =~ "children"
+  end
+
+  test "year trailing garbage rejected", %{conn: conn} do
+    conn =
+      post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000, "year" => "2026junk"})
+
+    assert json_response(conn, 400)["error"]["message"] =~ "unsupported year"
+  end
+
+  test "wage trailing garbage rejected", %{conn: conn} do
+    conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => "5000abc"})
     assert json_response(conn, 400)["error"]["message"] =~ "wage"
   end
 
@@ -119,5 +182,30 @@ defmodule PayrollApiWeb.ApiControllerTest do
 
     bad = Enum.find(results, fn r -> r["name"] == "Bad" end)
     assert bad["ok"] == false
+  end
+
+  test "POST bulk over 500 employees → 400", %{conn: conn} do
+    employees = Enum.map(1..501, fn i -> %{"name" => "E#{i}", "wage" => 5000} end)
+
+    conn = post(auth(conn), ~p"/api/v1/calculate-payslip/bulk", %{"employees" => employees})
+    assert json_response(conn, 400)["error"]["message"] =~ "500"
+  end
+
+  test "POST bulk accepts string wage for valid row", %{conn: conn} do
+    conn =
+      post(auth(conn), ~p"/api/v1/calculate-payslip/bulk", %{
+        "employees" => [%{"name" => "Ali", "wage" => "5000"}]
+      })
+
+    body = json_response(conn, 200)
+    ali = List.first(body["data"]["results"])
+    assert ali["ok"] == true
+  end
+
+  test "POST calculate-payslip accepts numeric string wage", %{conn: conn} do
+    conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => "5000"})
+    body = json_response(conn, 200)
+    assert body["success"] == true
+    assert body["data"]["net_pay"] == 4305.35
   end
 end

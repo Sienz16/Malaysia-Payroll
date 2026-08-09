@@ -387,15 +387,28 @@ defmodule PayrollApi.Statutory.Rates do
   @doc """
   EIS (SIP) contribution — bracket table, wage ceiling RM6,000.
   Equal employee/employer per bracket.
-  """
-  def eis(wage, rates \\ nil) do
-    r = rates || rates()
-    contribution = bracket_value(r.eis.brackets, wage, :contribution)
 
-    %{
-      employee: round_money(contribution),
-      employer: round_money(contribution)
-    }
+  Eligibility (SIP Act 2017): Malaysian citizens and PRs aged 18-59.
+  Foreign workers are not covered, and employees aged 60+ are not covered
+  (they may be covered by SOCSO Category 2 instead). Pass
+  `age_60_plus: true` or `citizenship: :non_malaysian` to get zero
+  contribution for those profiles.
+  """
+  def eis(wage, rates \\ nil, opts \\ []) do
+    age_60_plus = Keyword.get(opts, :age_60_plus, false)
+    citizenship = Keyword.get(opts, :citizenship, :malaysian)
+
+    if age_60_plus or citizenship == :non_malaysian do
+      %{employee: 0, employer: 0}
+    else
+      r = rates || rates()
+      contribution = bracket_value(r.eis.brackets, wage, :contribution)
+
+      %{
+        employee: round_money(contribution),
+        employer: round_money(contribution)
+      }
+    end
   end
 
   @doc """

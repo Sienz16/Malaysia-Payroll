@@ -20,10 +20,11 @@ defmodule PayrollApiWeb.ApiController do
     include_hrdf = parse_bool(params["include_hrdf"], true)
     hrdf_category = parse_hrdf_category(params["hrdf_category"])
     married = parse_bool(params["married"], false)
-    children = parse_int(params["children"], 0)
     lang = I18n.lang(params["lang"])
 
-    with {:ok, year} <- parse_year(params["year"]) do
+    with {:ok, wage} <- parse_wage_value(wage),
+         {:ok, year} <- parse_year(params["year"]),
+         {:ok, children} <- parse_children(params["children"]) do
       case Payslip.calculate(%{
              wage: wage,
              include_hrdf: include_hrdf,
@@ -40,6 +41,7 @@ defmodule PayrollApiWeb.ApiController do
       end
     else
       {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -111,6 +113,20 @@ defmodule PayrollApiWeb.ApiController do
 
   defp parse_wage_param(_), do: {:error, :wage_required}
 
+  # Shared wage normalization for JSON bodies: numbers pass through, complete
+  # numeric strings are converted, trailing garbage is rejected. Same contract
+  # as parse_wage_param/1 for the PDF query string.
+  defp parse_wage_value(wage) when is_number(wage), do: {:ok, wage}
+
+  defp parse_wage_value(wage) when is_binary(wage) do
+    case Float.parse(wage) do
+      {w, ""} -> {:ok, w}
+      _ -> {:error, :invalid_wage}
+    end
+  end
+
+  defp parse_wage_value(_), do: {:error, :invalid_wage}
+
   @doc "GET /api/v1/openapi.yaml — serve the OpenAPI spec"
   def openapi_spec(conn, _params) do
     path = Application.app_dir(:payroll_api, "priv/static/openapi.yaml")
@@ -164,17 +180,21 @@ defmodule PayrollApiWeb.ApiController do
   defp parse_citizenship("non_malaysian"), do: :non_malaysian
   defp parse_citizenship(_), do: :malaysian
 
-  defp parse_int(nil, default), do: default
-  defp parse_int(v, _default) when is_integer(v), do: v
+  # Strict children parsing: nil defaults to 0; any present value must be a
+  # complete non-negative integer — trailing garbage or partial parses are
+  # rejected instead of silently substituted.
+  defp parse_children(nil), do: {:ok, 0}
+  defp parse_children(v) when is_integer(v) and v >= 0, do: {:ok, v}
+  defp parse_children(v) when is_integer(v), do: {:error, :invalid_children}
 
-  defp parse_int(v, default) when is_binary(v) do
+  defp parse_children(v) when is_binary(v) do
     case Integer.parse(v) do
-      {n, ""} -> n
-      _ -> default
+      {n, ""} when n >= 0 -> {:ok, n}
+      _ -> {:error, :invalid_children}
     end
   end
 
-  defp parse_int(_, default), do: default
+  defp parse_children(_), do: {:error, :invalid_children}
 
   defp render_error(conn, reason) do
     conn
@@ -185,8 +205,10 @@ defmodule PayrollApiWeb.ApiController do
   defp reason_to_message(:wage_required), do: "wage is required (number)"
   defp reason_to_message(:invalid_wage), do: "wage must be a number"
   defp reason_to_message(:negative_wage), do: "wage cannot be negative"
+  defp reason_to_message(:zero_wage), do: "wage must be greater than zero"
   defp reason_to_message(:invalid_children), do: "children must be a non-negative integer"
   defp reason_to_message(:invalid_input), do: "invalid input"
   defp reason_to_message(:unsupported_year), do: "unsupported year"
+  defp reason_to_message(:bulk_too_large), do: "bulk request exceeds maximum of 500 employees"
   defp reason_to_message(other), do: inspect(other)
 end

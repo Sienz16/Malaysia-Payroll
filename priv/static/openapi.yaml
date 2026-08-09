@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Malaysia Payroll Statutory API
   description: EPF, SOCSO, EIS, HRDF, and PCB calculations for Malaysian payroll.
-  version: 0.2.0
+  version: 0.1.0
   contact:
     name: Sienz16
   license:
@@ -28,7 +28,19 @@ paths:
                 properties:
                   success: { type: boolean, example: true }
                   status: { type: string, example: ok }
-                  version: { type: string, example: "2026.1" }
+                  version: { type: string, example: "2026.2" }
+  /openapi.yaml:
+    get:
+      summary: Serve this OpenAPI contract
+      operationId: openapiSpec
+      security: []
+      responses:
+        "200":
+          description: OpenAPI 3.1 YAML document
+          content:
+            application/yaml:
+              schema:
+                type: string
   /rates:
     get:
       summary: Current statutory rate tables
@@ -67,15 +79,34 @@ paths:
                       socso:
                         type: object
                         properties:
-                          employee_rate: { type: number, example: 0.005 }
-                          employer_rate: { type: number, example: 0.0175 }
-                          wage_ceiling: { type: number, example: 4000 }
+                          wage_ceiling: { type: number, example: 6000 }
+                          category1_brackets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                max: { type: number }
+                                employer: { type: number }
+                                employee: { type: number }
+                          category2_brackets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                max: { type: number }
+                                employer: { type: number }
+                                employee: { type: number }
                       eis:
                         type: object
                         properties:
-                          employee_rate: { type: number, example: 0.002 }
-                          employer_rate: { type: number, example: 0.002 }
-                          wage_ceiling: { type: number, example: 4000 }
+                          wage_ceiling: { type: number, example: 6000 }
+                          brackets:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                max: { type: number }
+                                contribution: { type: number }
                       hrdf:
                         type: object
                         properties:
@@ -88,8 +119,12 @@ paths:
                   supported_years:
                     type: array
                     items: { type: integer }
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /calculate-payslip:
     post:
       summary: Calculate full statutory payslip breakdown
@@ -106,7 +141,7 @@ paths:
               properties:
                 wage:
                   type: number
-                  description: Gross monthly wage in RM
+                  description: Gross monthly wage in RM (must be greater than zero)
                   example: 5000
                 include_hrdf:
                   type: boolean
@@ -122,6 +157,7 @@ paths:
                 children:
                   type: integer
                   default: 0
+                  description: Non-negative integer; trailing garbage is rejected
                 citizenship:
                   type: string
                   enum: [malaysian, non_malaysian]
@@ -149,6 +185,8 @@ paths:
                     type: object
                     properties:
                       wage: { type: number }
+                      year: { type: integer }
+                      rates_version: { type: string }
                       employee_contributions:
                         type: object
                         properties:
@@ -175,32 +213,136 @@ paths:
                           annual_reliefs: { type: number }
                           annual_chargeable: { type: number }
                           annual_tax: { type: number }
+                  labels:
+                    type: object
+                    additionalProperties: { type: string }
         "400":
-          description: Invalid request
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /calculate-payslip/bulk:
+    post:
+      summary: Calculate payslips for multiple employees (max 500)
+      operationId: calculatePayslipBulk
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employees]
+              properties:
+                employees:
+                  type: array
+                  maxItems: 500
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string, example: "Ali" }
+                      wage: { type: number, example: 5000 }
+                      married: { type: boolean, default: false }
+                      children: { type: integer, default: 0 }
+                include_hrdf:
+                  type: boolean
+                  default: true
+                year:
+                  type: integer
+                  default: 2026
+      responses:
+        "200":
+          description: Per-row payslip results
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  error:
+                  success: { type: boolean }
+                  data:
                     type: object
                     properties:
-                      message: { type: string }
+                      count: { type: integer }
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name: { type: string }
+                            ok: { type: boolean }
+                            data:
+                              type: object
+                            error:
+                              type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /payslip.pdf:
+    get:
+      summary: Download a parser-valid sample payslip PDF
+      operationId: payslipPdf
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: wage
+          in: query
+          required: true
+          schema: { type: number }
+          description: Gross monthly wage in RM
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer, default: 2026 }
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimited"
   /keys:
     get:
-      summary: List registered API keys (redacted)
+      summary: List registered API keys (redacted, master key only)
       operationId: listKeys
       security:
         - BearerAuth: []
       responses:
         "200":
           description: Keys list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key_prefix: { type: string }
+                        source: { type: string }
+                        created_at: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     post:
-      summary: Register a new API key
+      summary: Register a new API key (master key only)
       operationId: createKey
       security:
         - BearerAuth: []
@@ -216,8 +358,17 @@ paths:
       responses:
         "200":
           description: Key added
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /keys/{key}:
     delete:
-      summary: Remove an API key
+      summary: Remove an API key (master key only; master key itself cannot be removed)
       operationId: deleteKey
       security:
         - BearerAuth: []
@@ -228,15 +379,43 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Key removed
+          description: Key removed (or error payload for master key / unknown key)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
   responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  message: { type: string }
     Unauthorized:
       description: Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  message: { type: string }
+    Forbidden:
+      description: Valid key but insufficient privilege (admin key required)
       content:
         application/json:
           schema:

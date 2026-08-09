@@ -39,6 +39,7 @@ defmodule PayrollApiWeb.CalculatorLive do
   defp humanize(:wage_required), do: "Enter a monthly wage."
   defp humanize(:invalid_wage), do: "Wage must be a number."
   defp humanize(:negative_wage), do: "Wage cannot be negative."
+  defp humanize(:zero_wage), do: "Wage must be greater than zero."
   defp humanize(other), do: "Calculation error: #{inspect(other)}"
 
   @impl true
