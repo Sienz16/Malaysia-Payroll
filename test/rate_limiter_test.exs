@@ -61,4 +61,11 @@ defmodule PayrollApi.RateLimiterTest do
     assert remaining_a == remaining_b
     assert remaining_a == RateLimiter.limit() - 1
   end
+
+  test "retry_after reports rolling window recovery" do
+    key = "retry-key"
+    assert {:ok, _} = RateLimiter.check(key)
+    assert RateLimiter.retry_after(key) > 86_400
+    assert RateLimiter.retry_after(key) <= 30 * 24 * 60 * 60
+  end
 end

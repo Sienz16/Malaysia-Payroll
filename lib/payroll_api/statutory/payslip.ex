@@ -77,7 +77,13 @@ defmodule PayrollApi.Statutory.Payslip do
                      Map.merge(defaults, %{
                        wage: wage,
                        married: emp_value(emp, :married, false),
-                       children: emp_value(emp, :children, 0)
+                       children: emp_value(emp, :children, 0),
+                       spouse_eligible: normalize_bool(emp_value(emp, :spouse_eligible, false)),
+                       citizenship:
+                         normalize_citizenship(emp_value(emp, :citizenship, :malaysian)),
+                       age_60_plus: normalize_bool(emp_value(emp, :age_60_plus, false)),
+                       hrdf_category:
+                         normalize_hrdf_category(emp_value(emp, :hrdf_category, :standard_1pct))
                      })
                    ) do
                 {:ok, result} -> %{name: name, ok: true, data: result}
@@ -116,6 +122,20 @@ defmodule PayrollApi.Statutory.Payslip do
       true -> default
     end
   end
+
+  defp normalize_bool(true), do: true
+  defp normalize_bool("true"), do: true
+  defp normalize_bool(_), do: false
+
+  defp normalize_citizenship(:non_malaysian), do: :non_malaysian
+  defp normalize_citizenship("non_malaysian"), do: :non_malaysian
+  defp normalize_citizenship(_), do: :malaysian
+
+  defp normalize_hrdf_category(:reduced_0_5pct), do: :reduced_0_5pct
+  defp normalize_hrdf_category("reduced_0_5pct"), do: :reduced_0_5pct
+  defp normalize_hrdf_category(:exempt), do: :exempt
+  defp normalize_hrdf_category("exempt"), do: :exempt
+  defp normalize_hrdf_category(_), do: :standard_1pct
 
   defp do_calculate(wage, opts) do
     year = opts[:year] || 2026

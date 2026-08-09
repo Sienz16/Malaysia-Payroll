@@ -20,12 +20,12 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | SEC-002 | Critical | in_progress | No tenant, owner, role, or authorization boundary exists. | Documented security limitation in `ApiKeyAuth` and `Keys` modules; full tenancy requires persistence layer. | Cross-tenant behavior pinned by tests (api_controller_test.exs); `mix precommit` passes |
 | DATA-001 | Critical | open | Employee persistence is claimed but no Repo, schema, migration, or durable payroll state exists. | Either remove claim or add constrained employer/employee/payroll persistence with tenant ownership and auditability. | Migration/schema tests, restart persistence test, `mix precommit` |
 | PAY-003 | High | verified | Unsupported years now reject at domain and API boundaries; selected rates snapshot reaches PCB. | Reject unsupported years and apply one selected snapshot consistently. | Domain/API malformed-year tests; `mix test` |
-| PAY-004 | High | in_progress | Integer-sen Money helpers now drive EPF, HRDF, PCB (annual tax + monthly), and payslip aggregation. Remaining: scheme-specific rounding edge cases and official boundary known-answer coverage. | Integer sen and scheme-specific rounding throughout all payroll calculations. | 101 tests + `mix precommit` pass; official boundary and Money unit coverage added (money_test.exs) |
+| PAY-004 | High | in_progress | Integer-sen Money helpers now drive EPF, HRDF, PCB (annual tax + monthly), and payslip aggregation. Remaining: scheme-specific rounding edge cases and official boundary known-answer coverage. | Integer sen and scheme-specific rounding throughout all payroll calculations. | 104 tests + `mix precommit` pass; official boundary and Money unit coverage added (money_test.exs) |
 | PAY-005 | High | in_progress | HRDF supports declared 1%, 0.5%, and exempt modes, but employer eligibility, wage-base rules, and official category validation remain incomplete. | Model covered wage floor and categories from HRD Corp rules with known-answer tests. | HRDF mode tests pass; official HRD Corp validation pending |
-| PAY-006 | High | verified | Employee age and citizenship now reach payslip orchestration: SOCSO Category 2 for 60+, zero EIS for 60+/non-Malaysian, flat EPF for non-Malaysian. Remaining: PR status and full category matrix from official rules. | Add validated employee statutory profile and route each scheme by eligibility. | Category matrix tests pass (payslip_test.exs, 3 tests); live API verified; `mix precommit` passes |
+| PAY-006 | High | in_progress | Employee age, citizenship, and bulk-row statutory profiles now reach payslip orchestration: SOCSO Category 2 for 60+, zero EIS for 60+/non-Malaysian, flat EPF for non-Malaysian. Remaining: PR status and full category matrix from official rules. | Add validated employee statutory profile and route each scheme by eligibility. | Top-level and bulk profile tests pass; official category matrix pending |
 | API-001 | High | verified | Bulk calculation now shares wage normalization, returns per-row errors, and enforces a 500-employee maximum. | One shared validation boundary; per-row errors; explicit maximum batch size; no crashes on valid JSON shapes. | Malformed and maximum-size request tests pass (domain + HTTP); `mix precommit` passes |
 | SEC-003 | High | open | Keys are plaintext, ephemeral, unscoped, and inconsistent across nodes/restarts. | Store only durable hashes and metadata; support owner, scope, expiry, rotation, and audited revocation. | Restart, revocation, scope, and secret-leak tests |
-| SEC-004 | High | verified | Rate limiter is now a single-node atomic GenServer counter: concurrent read/update cycles cannot lose updates. Restart still resets counters (documented). | Use durable or explicitly single-node atomic counters matching documented quota semantics. | Concurrent quota and restart tests pass (rate_limiter_test.exs); `mix precommit` passes |
+| SEC-004 | High | in_progress | Rate limiter is a single-node atomic GenServer with rolling-window retry duration; restart still resets counters. | Use durable or explicitly single-node atomic counters matching documented quota semantics. | Concurrent quota, key isolation, and retry-window tests pass; restart behavior documented but not directly tested |
 | API-002 | High | in_progress | PDF content stream and xref are now parser-valid, but payslip identity, period, numbering, and real endpoint parser test remain absent. | Produce parser-valid PDF with extractable payslip text and required payroll identity fields. | `pdfinfo`/`pdftotext` manual check passes; automated parser test pending |
 
 ## Important Follow-Up
@@ -34,7 +34,7 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 |---|---|---|---|---|---|
 | API-003 | Medium | verified | Numeric parsers reject trailing garbage at every boundary; children/wage parse completely or return structured errors. | Require complete parse; return structured validation errors. | Tests for `5000abc`, `2026junk`, negative/fractional children pass (api_controller_test.exs) |
 | PAY-007 | High | verified | Zero wage now rejected at domain and API boundaries; bulk rows get per-row errors instead of impossible negative payslips. | Define valid zero-wage behavior from official rules and reject impossible payroll outcomes. | Zero and lower-bound tests pass (payslip_test.exs, api_controller_test.exs) |
-| UI-001 | Medium | verified | LiveView defaults omitted HRDF checkbox to false. | Shared form normalization handles omitted checkbox as false without crashing. | LiveView interaction test passes (calculator_live_test.exs) |
+| UI-001 | Medium | verified | LiveView defaults omitted HRDF checkbox to false. | LiveView normalization handles omitted checkbox as false without crashing. | LiveView interaction test passes (calculator_live_test.exs) |
 | UI-002 | Medium | verified | LiveView uses `<Layouts.app>`, `to_form/2`, `<.form>`, `<.input>`, and key IDs; interaction tests now cover render, submit, error, and omitted-checkbox paths. | Use Phoenix 1.8 form/layout conventions with tested IDs. | `mix test` passes; LiveView interaction tests added (calculator_live_test.exs, 7 tests) |
 | UI-003 | High | in_progress | Landing page, separate `/calculator` playground, navigation, and redesigned `/api-docs` now exist; responsive/accessibility interaction coverage and screenshot review remain. | Build responsive landing page, API playground, trust/source messaging, clear docs CTA, and modern visual system without adding a UI framework. | `mix test`/`mix precommit` pass; browser/mobile review and screenshot review pending |
 | ARCH-001 | Medium | open | Web layer calls internal calculators, PDF, keys, and raw ETS directly. | Use existing `PayrollApi` module as thin public context; keep storage internals private. | Compile plus focused context/controller tests |
@@ -67,9 +67,9 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 | ID | Status | Verification |
 |---|---|---|
 | SEC-001 | verified | Key authorization: 401 (no key), 403 (plain key), 200 (master key) across GET/POST/DELETE; master key cannot be deleted. `key_controller_test.exs` |
-| SEC-004 | verified | Rate limiter atomic: 100 concurrent checks with no lost updates; quota enforcement; per-key independence. `rate_limiter_test.exs` |
+| SEC-004 | in_progress | Rate limiter atomic: concurrent checks with no lost updates; quota enforcement, per-key independence, and rolling retry duration tested. Restart persistence remains explicitly unsupported and untested. `rate_limiter_test.exs` |
 | PAY-003 | verified | Unsupported/malformed years rejected at domain and API boundaries. |
-| PAY-006 | verified | Age/citizenship profile reaches SOCSO (Category 2 for 60+), EIS (zero for 60+/non-Malaysian), EPF (flat 2% non-Malaysian, 0/4% 60+). |
+| PAY-006 | in_progress | Age/citizenship profile reaches top-level and bulk payslip paths; PR and full official category matrix remain open. |
 | PAY-007 | verified | Zero wage rejected at domain and API; bulk row errors; no negative payslips. |
 | API-001 | verified | Bulk shares wage normalization, per-row errors, 500-employee max enforced at domain and HTTP. |
 | API-003 | verified | Trailing garbage in wage/children/year rejected; complete numeric strings accepted. |
@@ -82,8 +82,8 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-09 | `mix test` | 101 tests passed |
-| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 101 tests) |
+| 2026-08-09 | `mix test` | 104 tests passed |
+| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 104 tests) |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
 
@@ -92,7 +92,9 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 - **PAY-007**: Zero wage rejected at domain (`:zero_wage`) and API boundaries; bulk rows return per-row errors. Friendly LiveView message added.
 - **API-003**: `parse_children/1` strict — trailing garbage (`2abc`, `2.5`) and negatives rejected; shared `parse_wage_value/1` normalizes numeric strings at single + PDF boundaries.
 - **API-001**: Bulk capped at 500 employees (`:bulk_too_large`); rows share `normalize_wage/1`; non-map rows return `:invalid_input`.
+- **PAY-006**: Bulk rows now preserve and normalize `citizenship`, `age_60_plus`, `spouse_eligible`, and `hrdf_category` profiles.
 - **SEC-004**: Rate limiter rewritten as single-node atomic GenServer (no ETS read/filter/write races); documented restart semantics.
+- **SEC-004**: Rate-limited responses now report actual rolling-window recovery seconds through `Retry-After`.
 - **SEC-001**: Full route authorization tests (401/403/200) for key admin endpoints.
 - **SEC-002**: Cross-tenant behavior pinned by tests; limitation already documented in `ApiKeyAuth` + `Keys` moduledocs.
 - **PAY-004**: PCB migrated to integer-sen (annual tax, monthly PCB with half-up rounding); payslip aggregation sums in sen; `Money` unit tests added.
@@ -100,7 +102,7 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 - **UI-002**: Calculator LiveView interaction tests (render, submit, error, omitted checkbox, zero wage) + landing/docs coverage.
 - **DOC-001**: OpenAPI canonical — bulk, PDF, openapi endpoints added; SOCSO/EIS bracket schema fixed (ceiling RM6,000); EPF direction corrected; `/keys/{key}` matches router; contract tests added.
 - **ARCH-004**: Stale digested OpenAPI artifact removed.
-- **TEST-002**: +49 tests across key auth, rate limiter, LiveView, Money, OpenAPI contract, malformed input, zero-wage.
+- **TEST-002**: +52 tests across key auth, rate limiter, LiveView, Money, OpenAPI contract, malformed input, zero-wage, and bulk statutory profiles.
 
 Remaining release blockers: official KWSP Third Schedule implementation, official LHDN MTD scope, durable tenant-aware credentials/data, official HRD Corp eligibility, full scheme-specific rounding known-answer suites, automated PDF parser test, and deployment/operations controls.
 

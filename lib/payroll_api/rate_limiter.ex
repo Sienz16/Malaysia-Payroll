@@ -35,6 +35,9 @@ defmodule PayrollApi.RateLimiter do
     GenServer.call(__MODULE__, {:check, key})
   end
 
+  @doc "Seconds until oldest retained hit exits rolling window."
+  def retry_after(key), do: GenServer.call(__MODULE__, {:retry_after, key})
+
   @impl true
   def handle_call({:check, key}, _from, state) do
     now = System.system_time(:second)
@@ -48,5 +51,13 @@ defmodule PayrollApi.RateLimiter do
     else
       {:reply, {:ok, limit - length(fresh) - 1}, Map.put(state, key, [now | fresh])}
     end
+  end
+
+  @impl true
+  def handle_call({:retry_after, key}, _from, state) do
+    now = System.system_time(:second)
+    oldest = state |> Map.get(key, []) |> Enum.min(fn -> now end)
+    retry_after = max(@window_seconds - (now - oldest), 0)
+    {:reply, retry_after, state}
   end
 end

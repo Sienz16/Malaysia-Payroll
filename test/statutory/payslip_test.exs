@@ -65,6 +65,22 @@ defmodule PayrollApi.Statutory.PayslipTest do
              Payslip.calculate_bulk(%{employees: [nil]})
   end
 
+  test "bulk preserves employee statutory profiles" do
+    {:ok, %{results: [foreign, older, spouse]}} =
+      Payslip.calculate_bulk(%{
+        employees: [
+          %{name: "Foreign", wage: 21_250, citizenship: :non_malaysian},
+          %{name: "Older", wage: 21_250, age_60_plus: true},
+          %{name: "Spouse", wage: 5000, spouse_eligible: true}
+        ],
+        include_hrdf: false
+      })
+
+    assert foreign.data.employee_contributions.epf == 425.0
+    assert older.data.employee_contributions.epf == 0.0
+    assert spouse.data.tax_details.annual_reliefs == 17_000.0
+  end
+
   test "include_hrdf false removes HRDF" do
     {:ok, result} = Payslip.calculate(%{wage: 5000, include_hrdf: false})
     assert result.employer_contributions.hrdf == 0

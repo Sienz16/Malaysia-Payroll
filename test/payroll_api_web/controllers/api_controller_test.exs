@@ -202,6 +202,22 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert ali["ok"] == true
   end
 
+  test "POST bulk forwards employee statutory profiles", %{conn: conn} do
+    body =
+      post(auth(conn), ~p"/api/v1/calculate-payslip/bulk", %{
+        "employees" => [
+          %{"name" => "Foreign", "wage" => 21_250, "citizenship" => "non_malaysian"},
+          %{"name" => "Older", "wage" => 21_250, "age_60_plus" => true}
+        ],
+        "include_hrdf" => false
+      })
+      |> json_response(200)
+
+    [foreign, older] = body["data"]["results"]
+    assert foreign["data"]["employee_contributions"]["epf"] == 425.0
+    assert older["data"]["employee_contributions"]["epf"] == 0.0
+  end
+
   test "POST calculate-payslip accepts numeric string wage", %{conn: conn} do
     conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => "5000"})
     body = json_response(conn, 200)

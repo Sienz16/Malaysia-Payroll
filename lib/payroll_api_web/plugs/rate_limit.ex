@@ -31,7 +31,10 @@ defmodule PayrollApiWeb.Plug.RateLimit do
 
           {:error, :rate_limited} ->
             conn
-            |> put_resp_header("retry-after", "86400")
+            |> put_resp_header(
+              "retry-after",
+              Integer.to_string(PayrollApi.RateLimiter.retry_after(key))
+            )
             |> put_resp_content_type("application/json")
             |> send_resp(429, Jason.encode!(%{error: %{message: "rate limit exceeded"}}))
             |> halt()

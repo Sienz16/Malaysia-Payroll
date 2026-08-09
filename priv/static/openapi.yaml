@@ -246,6 +246,10 @@ paths:
                       wage: { type: number, example: 5000 }
                       married: { type: boolean, default: false }
                       children: { type: integer, default: 0 }
+                      citizenship: { type: string, enum: [malaysian, non_malaysian], default: malaysian }
+                      age_60_plus: { type: boolean, default: false }
+                      spouse_eligible: { type: boolean, default: false }
+                      hrdf_category: { type: string, enum: [standard_1pct, reduced_0_5pct, exempt], default: standard_1pct }
                 include_hrdf:
                   type: boolean
                   default: true
@@ -294,10 +298,15 @@ paths:
           required: true
           schema: { type: number }
           description: Gross monthly wage in RM
-        - name: year
-          in: query
-          required: false
-          schema: { type: integer, default: 2026 }
+         - name: year
+           in: query
+           required: false
+           schema: { type: integer, default: 2026 }
+         - name: include_hrdf
+           in: query
+           required: false
+           schema: { type: boolean, default: true }
+           description: Include HRDF levy
       responses:
         "200":
           description: PDF document
