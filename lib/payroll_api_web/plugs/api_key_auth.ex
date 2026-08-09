@@ -2,6 +2,11 @@ defmodule PayrollApiWeb.Plug.ApiKeyAuth do
   @moduledoc """
   Bearer API key authentication for the public API.
 
+  **Security Limitation**: This implementation only provides basic bearer key validation.
+  It does **not** implement employer tenancy, role-based access control, or multi-tenant
+  authorization boundaries. No per-employer data scoping exists because there is no
+  persistence layer yet.
+
   Reads `Authorization: Bearer <key>` and compares against configured keys:
     1. `PAYROLL_API_KEY` env (master key)
     2. Keys in `PayrollApi.Keys` (DB-backed, added via /api/keys — Sprint 3+)
@@ -36,13 +41,7 @@ defmodule PayrollApiWeb.Plug.ApiKeyAuth do
   end
 
   defp valid_key?(key) do
-    master = System.get_env("PAYROLL_API_KEY", "")
-
-    cond do
-      key == master and master != "" -> true
-      PayrollApi.Keys.valid?(key) -> true
-      true -> false
-    end
+    PayrollApi.Keys.valid?(key)
   end
 
   defp unauthorized(conn) do

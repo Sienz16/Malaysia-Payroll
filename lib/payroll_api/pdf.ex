@@ -53,26 +53,37 @@ defmodule PayrollApi.Pdf do
   # -- minimal PDF writer -----------------------------------------------------
 
   defp document(lines) do
-    content = lines |> Enum.join("\n") |> escape()
+    content =
+      lines
+      |> Enum.with_index()
+      |> Enum.map_join("\n", fn {line, index} ->
+        "BT /F1 10 Tf 50 #{760 - index * 14} Td (#{escape(line)}) Tj ET"
+      end)
 
     objects = [
       obj(1, "<< /Type /Catalog /Pages 2 0 R >>"),
       obj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
-      obj(3, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"),
+      obj(
+        3,
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+      ),
       obj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>"),
       obj(5, "<< /Length #{byte_size(content)} >>\nstream\n#{content}\nendstream")
     ]
 
     header = "%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n"
-    body = Enum.join(objects, "\n")
+    body = Enum.join(objects, "\n") <> "\n"
 
     offsets = compute_offsets(header, objects)
 
     xref =
       "xref\n0 #{length(objects) + 1}\n0000000000 65535 f \n" <>
-        Enum.map_join(offsets, "", fn off -> String.pad_leading(Integer.to_string(off), 10, "0") <> " 00000 n \n" end)
+        Enum.map_join(offsets, "", fn off ->
+          String.pad_leading(Integer.to_string(off), 10, "0") <> " 00000 n \n"
+        end)
 
-    trailer = "trailer\n<< /Size #{length(objects) + 1} /Root 1 0 R >>\nstartxref\n#{byte_size(header) + byte_size(body) + byte_size(xref)}\n%%EOF"
+    trailer =
+      "trailer\n<< /Size #{length(objects) + 1} /Root 1 0 R >>\nstartxref\n#{byte_size(header) + byte_size(body)}\n%%EOF"
 
     header <> body <> xref <> trailer
   end

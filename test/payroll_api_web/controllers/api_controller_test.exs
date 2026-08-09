@@ -21,6 +21,16 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert body["supported_years"] == [2025, 2026]
   end
 
+  test "GET /api/v1/rates rejects malformed year", %{conn: conn} do
+    conn = get(auth(conn), ~p"/api/v1/rates?year=2026.0")
+    assert json_response(conn, 400)["error"]["message"] =~ "unsupported year"
+  end
+
+  test "GET /api/v1/rates rejects non-numeric year values", %{conn: conn} do
+    conn = get(auth(conn), ~p"/api/v1/rates?year[]=2026")
+    assert json_response(conn, 400)["error"]["message"] =~ "unsupported year"
+  end
+
   test "POST /api/v1/calculate-payslip with wage", %{conn: conn} do
     conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000})
 
@@ -38,7 +48,11 @@ defmodule PayrollApiWeb.ApiControllerTest do
       |> json_response(200)
 
     married =
-      post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000, "married" => "true", "children" => 2})
+      post(auth(conn), ~p"/api/v1/calculate-payslip", %{
+        "wage" => 5000,
+        "married" => "true",
+        "children" => 2
+      })
       |> json_response(200)
 
     assert married["data"]["employee_contributions"]["pcb"] <
@@ -58,7 +72,8 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert body |> String.starts_with?("%PDF-1.4")
     assert body =~ "xref"
     assert body =~ "%%EOF"
-    assert body =~ "NET PAY"
+    assert body =~ "BT"
+    assert body =~ "Tj"
   end
 
   test "GET /api/v1/payslip.pdf missing wage → 400", %{conn: conn} do

@@ -22,11 +22,13 @@ defmodule PayrollApi.Statutory.Payslip do
   """
   def calculate(opts) when is_map(opts) do
     wage = Map.get(opts, :wage)
+    children = Map.get(opts, :children, 0)
 
     cond do
       is_nil(wage) -> {:error, :wage_required}
       not is_number(wage) -> {:error, :invalid_wage}
       wage < 0 -> {:error, :negative_wage}
+      not is_integer(children) or children < 0 -> {:error, :invalid_children}
       true -> do_calculate(wage, opts)
     end
   end
@@ -49,15 +51,21 @@ defmodule PayrollApi.Statutory.Payslip do
       employees
       |> Enum.with_index(1)
       |> Enum.map(fn {emp, idx} ->
-        name = emp_value(emp, :name, "Employee #{idx}")
+        if is_map(emp) do
+          name = emp_value(emp, :name, "Employee #{idx}")
 
-        case calculate(Map.merge(defaults, %{
-               wage: emp_value(emp, :wage, nil),
-               married: emp_value(emp, :married, false),
-               children: emp_value(emp, :children, 0)
-             })) do
-          {:ok, result} -> %{name: name, ok: true, data: result}
-          {:error, reason} -> %{name: name, ok: false, error: reason}
+          case calculate(
+                 Map.merge(defaults, %{
+                   wage: emp_value(emp, :wage, nil),
+                   married: emp_value(emp, :married, false),
+                   children: emp_value(emp, :children, 0)
+                 })
+               ) do
+            {:ok, result} -> %{name: name, ok: true, data: result}
+            {:error, reason} -> %{name: name, ok: false, error: reason}
+          end
+        else
+          %{name: "Employee #{idx}", ok: false, error: :invalid_input}
         end
       end)
 
@@ -77,16 +85,38 @@ defmodule PayrollApi.Statutory.Payslip do
 
   defp do_calculate(wage, opts) do
     year = opts[:year] || 2026
-    include_hrdf = Map.get(opts, :include_hrdf, true)
-    rates = Rates.rates(year)
 
+    with rates when is_map(rates) <- Rates.rates(year) do
+      calculate_with_rates(wage, opts, year, rates)
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp calculate_with_rates(wage, opts, year, rates) do
+    include_hrdf = Map.get(opts, :include_hrdf, true)
+    hrdf_category = Map.get(opts, :hrdf_category, :standard_1pct)
     epf = Rates.epf(wage, rates)
     socso = Rates.socso(wage, rates)
     eis = Rates.eis(wage, rates)
-    hrdf = if include_hrdf, do: Rates.hrdf(wage, rates), else: %{employee: 0, employer: 0}
-    pcb = Pcb.monthly(%{wage: wage, married: Map.get(opts, :married, false), children: Map.get(opts, :children, 0), epf_monthly: epf.employee})
 
-    employee_total = epf.employee + socso.employee + eis.employee + hrdf.employee + pcb.monthly_pcb
+    hrdf =
+      if include_hrdf,
+        do: Rates.hrdf(wage, rates, category: hrdf_category),
+        else: %{employee: 0, employer: 0}
+
+    pcb =
+      Pcb.monthly(%{
+        wage: wage,
+        married: Map.get(opts, :married, false),
+        children: Map.get(opts, :children, 0),
+        epf_monthly: epf.employee,
+        rates: rates
+      })
+
+    employee_total =
+      epf.employee + socso.employee + eis.employee + hrdf.employee + pcb.monthly_pcb
+
     employer_total = epf.employer + socso.employer + eis.employer + hrdf.employer
     net_pay = wage - employee_total
 

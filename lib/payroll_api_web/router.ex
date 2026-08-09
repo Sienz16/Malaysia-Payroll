@@ -20,6 +20,10 @@ defmodule PayrollApiWeb.Router do
     plug PayrollApiWeb.Plug.RateLimit
   end
 
+  pipeline :api_admin do
+    plug PayrollApiWeb.Plug.MasterKeyAuth
+  end
+
   # Public endpoints — no auth.
   scope "/api/v1", PayrollApiWeb do
     pipe_through :api
@@ -36,6 +40,12 @@ defmodule PayrollApiWeb.Router do
     post "/calculate-payslip", ApiController, :calculate_payslip
     post "/calculate-payslip/bulk", ApiController, :calculate_payslip_bulk
     get "/payslip.pdf", ApiController, :payslip_pdf
+  end
+
+  # Key administration — restricted to the master API key.
+  scope "/api/v1", PayrollApiWeb do
+    pipe_through [:api, :api_auth, :api_admin]
+
     get "/keys", KeyController, :index
     post "/keys", KeyController, :create
     delete "/keys/:key", KeyController, :delete

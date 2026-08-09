@@ -18,6 +18,8 @@ defmodule PayrollApi.Statutory.Rates do
 
   @default_year 2026
 
+  alias PayrollApi.Statutory.Money
+
   # SOCSO (PERKESO) Category 1 — employees below 60 (Malaysian + foreign),
   # effective Oct 2024, wage ceiling RM6,000. Values from PERKESO rate table.
   @socso_category1_brackets [
@@ -244,8 +246,8 @@ defmodule PayrollApi.Statutory.Rates do
       effective_to: to,
       epf: %{
         employee_rate: 0.11,
-        employer_rate_under_5k: 0.12,
-        employer_rate_over_5k: 0.13,
+        employer_rate_at_or_under_5k: 0.13,
+        employer_rate_over_5k: 0.12,
         wage_threshold: 5000
       },
       socso: %{
@@ -275,10 +277,14 @@ defmodule PayrollApi.Statutory.Rates do
     }
   end
 
-  @doc "Current statutory rates snapshot for a year (default current year)."
-  def rates(year \\ @default_year) do
-    rates_by_year()
-    |> Map.get(year, Map.get(rates_by_year(), @default_year))
+  @doc "Current statutory rates snapshot, or `{:error, :unsupported_year}`."
+  def rates, do: Map.fetch!(rates_by_year(), @default_year)
+
+  def rates(year) do
+    case Map.fetch(rates_by_year(), year) do
+      {:ok, snapshot} -> snapshot
+      :error -> {:error, :unsupported_year}
+    end
   end
 
   @doc "List of supported years."
@@ -294,14 +300,20 @@ defmodule PayrollApi.Statutory.Rates do
 
   @doc """
   Compute EPF contribution (employee + employer).
-  Employer rate: 12% below RM5,000, 13% at/above.
+  Employer rate: 13% at/below RM5,000, 12% above.
   """
   def epf(wage, rates \\ nil) do
     r = rates || rates()
-    emp_rate = if wage >= r.epf.wage_threshold, do: r.epf.employer_rate_over_5k, else: r.epf.employer_rate_under_5k
+    wage_sen = Money.to_sen(wage)
+
+    emp_rate =
+      if wage <= r.epf.wage_threshold,
+        do: r.epf.employer_rate_at_or_under_5k,
+        else: r.epf.employer_rate_over_5k
+
     %{
-      employee: round_money(wage * r.epf.employee_rate),
-      employer: round_money(wage * emp_rate)
+      employee: Money.to_ringgit(Money.percentage(wage_sen, r.epf.employee_rate)),
+      employer: Money.to_ringgit(Money.percentage(wage_sen, emp_rate))
     }
   end
 
@@ -311,6 +323,7 @@ defmodule PayrollApi.Statutory.Rates do
   """
   def socso(wage, rates \\ nil, opts \\ %{}) do
     r = rates || rates()
+
     brackets =
       if Map.get(opts, :age_60_plus, false),
         do: r.socso.category2_brackets,
@@ -329,6 +342,7 @@ defmodule PayrollApi.Statutory.Rates do
   def eis(wage, rates \\ nil) do
     r = rates || rates()
     contribution = bracket_value(r.eis.brackets, wage, :contribution)
+
     %{
       employee: round_money(contribution),
       employer: round_money(contribution)
@@ -338,13 +352,21 @@ defmodule PayrollApi.Statutory.Rates do
   @doc """
   HRDF — employer 1% of wage (levy). Employee pays nothing.
   """
-  def hrdf(wage, rates \\ nil) do
+  def hrdf(wage, rates \\ nil, opts \\ []) do
     r = rates || rates()
+    wage_sen = Money.to_sen(wage)
+    rate = hrdf_rate(r, Keyword.get(opts, :category, :standard_1pct))
+
     %{
       employee: 0,
-      employer: round_money(wage * r.hrdf.employer_rate)
+      employer: Money.to_ringgit(Money.percentage(wage_sen, rate))
     }
   end
+
+  defp hrdf_rate(rates, :standard_1pct), do: rates.hrdf.employer_rate
+  defp hrdf_rate(_rates, :reduced_0_5pct), do: 0.005
+  defp hrdf_rate(_rates, :exempt), do: 0
+  defp hrdf_rate(_rates, _), do: raise(ArgumentError, "invalid HRDF category")
 
   defp bracket_value(brackets, wage, key) do
     Enum.find_value(brackets, 0.0, fn bracket ->

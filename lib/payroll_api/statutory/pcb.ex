@@ -38,12 +38,15 @@ defmodule PayrollApi.Statutory.Pcb do
   def reliefs do
     %{
       individual: 9_000,
-      epf: 4_000,          # EPF/SOCSO contribution relief cap
-      spouse: 4_000,       # per non-working spouse (additional)
+      # EPF/SOCSO contribution relief cap
+      epf: 4_000,
+      # per non-working spouse (additional)
+      spouse: 4_000,
       life_insurance: 3_000,
       medical_insurance: 4_000,
       education_fees: 7_000,
-      child: 2_000         # per child under 18 (additional)
+      # per child under 18 (additional)
+      child: 2_000
     }
   end
 
@@ -93,7 +96,7 @@ defmodule PayrollApi.Statutory.Pcb do
     * `:epf_monthly` — monthly EPF paid (defaults to 11% of wage, capped)
   """
   def monthly(%{wage: wage} = opts) when is_number(wage) and wage >= 0 do
-    r = PayrollApi.Statutory.Rates.rates()
+    r = Map.get(opts, :rates, PayrollApi.Statutory.Rates.rates())
     epf_monthly = Map.get(opts, :epf_monthly, wage * r.epf.employee_rate)
 
     annual_gross = wage * 12
@@ -101,12 +104,14 @@ defmodule PayrollApi.Statutory.Pcb do
 
     relief_total =
       reliefs().individual +
-      epf_annual +
-      (if Map.get(opts, :married, false), do: reliefs().spouse, else: 0) +
-      (Map.get(opts, :children, 0) * reliefs().child)
+        epf_annual +
+        if(Map.get(opts, :married, false), do: reliefs().spouse, else: 0) +
+        Map.get(opts, :children, 0) * reliefs().child
 
     chargeable = max(annual_gross - relief_total, 0)
-    {annual_tax_value, _} = annual_tax(chargeable, %{spouse_relief: Map.get(opts, :married, false)})
+
+    {annual_tax_value, _} =
+      annual_tax(chargeable, %{spouse_relief: Map.get(opts, :married, false)})
 
     %{
       annual_gross: round2(annual_gross),

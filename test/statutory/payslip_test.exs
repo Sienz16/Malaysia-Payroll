@@ -28,8 +28,21 @@ defmodule PayrollApi.Statutory.PayslipTest do
     assert {:error, :negative_wage} = Payslip.calculate(%{wage: -100})
   end
 
+  test "unsupported year rejected at domain boundary" do
+    assert {:error, :unsupported_year} = Payslip.calculate(%{wage: 5000, year: 2099})
+  end
+
   test "non-numeric wage rejected" do
     assert {:error, :invalid_wage} = Payslip.calculate(%{wage: "abc"})
+  end
+
+  test "negative children rejected" do
+    assert {:error, :invalid_children} = Payslip.calculate(%{wage: 5000, children: -1})
+  end
+
+  test "bulk rejects non-map employees without crashing" do
+    assert {:ok, %{results: [%{ok: false, error: :invalid_input}]}} =
+             Payslip.calculate_bulk(%{employees: [nil]})
   end
 
   test "include_hrdf false removes HRDF" do

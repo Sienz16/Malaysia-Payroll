@@ -23,7 +23,10 @@ defmodule PayrollApiWeb.Plug.RateLimit do
         case PayrollApi.RateLimiter.check(key) do
           {:ok, remaining} ->
             conn
-            |> put_resp_header("x-ratelimit-limit", Integer.to_string(PayrollApi.RateLimiter.limit()))
+            |> put_resp_header(
+              "x-ratelimit-limit",
+              Integer.to_string(PayrollApi.RateLimiter.limit())
+            )
             |> put_resp_header("x-ratelimit-remaining", Integer.to_string(remaining))
 
           {:error, :rate_limited} ->

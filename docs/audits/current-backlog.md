@@ -14,19 +14,19 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 
 | ID | Severity | Status | Finding | Minimal acceptance criteria | Verification |
 |---|---|---|---|---|---|
-| PAY-001 | Critical | open | EPF employer rates are reversed and percentage arithmetic ignores KWSP schedules. | Effective-dated KWSP Third Schedule data, employee categories, official rounding, and known-answer tests replace approximation. | Official KWSP examples plus all threshold tests; `mix precommit` |
+| PAY-001 | Critical | in_progress | EPF percentage direction corrected, but KWSP Third Schedule schedules and statutory rounding remain absent. | Effective-dated KWSP Third Schedule data, employee categories, official rounding, and known-answer tests replace approximation. | Threshold tests pass; official KWSP validation still required |
 | PAY-002 | Critical | open | PCB is annualized simplified tax, not production Malaysian MTD. | Implement and validate required LHDN computerized MTD scope, or remove production PCB claims and expose limitation clearly. | Official LHDN ordinary/additional remuneration examples; `mix precommit` |
-| SEC-001 | Critical | open | Every valid API key can administer all API keys. | Remove key-management API or protect it with separate admin authorization and scoped credentials. | Calculation-only key receives 403 for every key-management route |
-| SEC-002 | Critical | open | No tenant, owner, role, or authorization boundary exists. | Define employer tenancy before persistent payroll data; enforce tenant ownership at every data boundary. | Cross-tenant access tests plus `mix precommit` |
+| SEC-001 | Critical | in_progress | Key-management routes now require a master key, but route authorization and key-source behavior need full tests and durable credential design. | Separate admin authorization is tested; durable scoped credentials remain required for production. | Master-key configuration test passes; route 401/403 coverage pending |
+| SEC-002 | Critical | open | No tenant, owner, role, or authorization boundary exists. | Documented security limitation in `ApiKeyAuth` and `Keys` modules; full tenancy requires persistence layer. | Cross-tenant access tests plus `mix precommit` |
 | DATA-001 | Critical | open | Employee persistence is claimed but no Repo, schema, migration, or durable payroll state exists. | Either remove claim or add constrained employer/employee/payroll persistence with tenant ownership and auditability. | Migration/schema tests, restart persistence test, `mix precommit` |
-| PAY-003 | High | open | Unsupported years silently use 2026 rates while response reports requested year. | Reject unsupported years; pass selected snapshot consistently into EPF, SOCSO, EIS, HRDF, and PCB. | Unsupported-year API and domain tests |
-| PAY-004 | High | open | Payroll money uses binary floating-point and generic rounding. | Use integer sen and explicit scheme-specific rounding rules throughout domain calculation. | Boundary/property tests and official examples |
-| PAY-005 | High | open | HRDF eligibility is reduced to universal 1% toggle. | Model non-applicability, covered wage base, 0.5%, and 1% employer categories. | HRD Corp known scenarios |
+| PAY-003 | High | fixed | Unsupported years now reject at domain and API boundaries; selected rates snapshot reaches PCB. | Reject unsupported years and apply one selected snapshot consistently. | Domain/API malformed-year tests; `mix test` |
+| PAY-004 | High | in_progress | Money helper now drives EPF/HRDF percentage calculations, but PCB and aggregate calculations still use floats and statutory rounding is incomplete. | Integer sen and scheme-specific rounding throughout all payroll calculations. | Current tests pass; official boundary and Money unit coverage pending |
+| PAY-005 | High | in_progress | HRDF supports declared 1%, 0.5%, and exempt modes, but employer eligibility, wage-base rules, and official category validation remain incomplete. | Model covered wage floor and categories from HRD Corp rules with known-answer tests. | HRDF mode tests pass; official HRD Corp validation pending |
 | PAY-006 | High | open | Employee age, citizenship, PR status, foreign-worker category, and SOCSO Category 2 cannot reach payslip calculation. | Add validated employee statutory profile and route each scheme by eligibility. | Category matrix tests |
 | API-001 | High | open | Bulk calculation bypasses normalization, allows malformed entries, and has no size limit. | One shared validation boundary; per-row errors; explicit maximum batch size; no crashes on valid JSON shapes. | Malformed and maximum-size request tests |
 | SEC-003 | High | open | Keys are plaintext, ephemeral, unscoped, and inconsistent across nodes/restarts. | Store only durable hashes and metadata; support owner, scope, expiry, rotation, and audited revocation. | Restart, revocation, scope, and secret-leak tests |
 | SEC-004 | High | open | Rate limiter has lost-update races, linear timestamp storage, and node/restart bypasses. | Use durable or explicitly single-node atomic counters matching documented quota semantics. | Concurrent quota and restart tests |
-| API-002 | High | open | Hand-written PDF output has invalid content stream and incorrect `startxref`. | Produce parser-valid PDF with extractable payslip text and required payroll identity fields. | Real PDF parser/text extraction test |
+| API-002 | High | in_progress | PDF content stream and xref are now parser-valid, but payslip identity, period, numbering, and real endpoint parser test remain absent. | Produce parser-valid PDF with extractable payslip text and required payroll identity fields. | `pdfinfo`/`pdftotext` manual check passes; automated parser test pending |
 
 ## Important Follow-Up
 
@@ -34,8 +34,8 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 |---|---|---|---|---|---|
 | API-003 | Medium | open | Numeric parsers accept trailing garbage and silently substitute defaults. | Require complete parse; return structured validation errors. | Tests for `5000abc`, `2026junk`, negative/fractional children |
 | PAY-007 | High | open | Zero wage receives SOCSO/EIS deductions and negative net pay. | Define valid zero-wage behavior from official rules and reject impossible payroll outcomes. | Zero and lower-bound tests |
-| UI-001 | Medium | open | Unchecked HRDF checkbox can miss LiveView handler clause. | Shared form normalization handles omitted checkbox as false without crashing. | LiveView submit test with checkbox unchecked |
-| UI-002 | Medium | open | LiveView bypasses project layout/form conventions and lacks stable DOM IDs. | Use `<Layouts.app>`, `to_form/2`, `<.form>`, `<.input>`, and tested IDs. | LiveView mount and interaction tests |
+| UI-001 | Medium | fixed | LiveView now defaults omitted HRDF checkbox to false. | Shared form normalization handles omitted checkbox as false without crashing. | Code path fixed; LiveView interaction test pending |
+| UI-002 | Medium | in_progress | LiveView now uses `<Layouts.app>`, `to_form/2`, `<.form>`, `<.input>`, and key IDs; interaction/accessibility tests remain absent. | Use Phoenix 1.8 form/layout conventions with tested IDs. | `mix test` passes; LiveView interaction tests pending |
 | ARCH-001 | Medium | open | Web layer calls internal calculators, PDF, keys, and raw ETS directly. | Use existing `PayrollApi` module as thin public context; keep storage internals private. | Compile plus focused context/controller tests |
 | ARCH-002 | Medium | open | Parsing and error mapping differ across API, bulk, PDF, and LiveView. | One input normalization policy and stable public error mapper. | Same invalid input yields consistent outcomes on each boundary |
 | DOC-001 | Medium | open | README, docs page, OpenAPI, router, versions, and examples disagree. | Make OpenAPI canonical; align routes, auth, schemas, examples, and versions. | Contract test comparing documented and routed endpoints |
@@ -44,7 +44,7 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | OPS-003 | Medium | open | Metrics exist without reporter; security/payroll audit events are absent. | Choose reporter and actionable signals, or remove unused telemetry until needed; persist security audit events before production. | Reporter smoke test and audit-event tests |
 | TEST-001 | High | open | Tests validate internal formulas rather than official statutory results. | Add release-gating known-answer and boundary suites from official sources. | Focused statutory suites plus `mix precommit` |
 | TEST-002 | Medium | open | Keys, limiter, LiveView, PDF validity, malformed bulk input, and OpenAPI drift lack tests. | Add focused boundary tests before expanding unit-test volume. | New tests plus `mix precommit` |
-| TEST-003 | Medium | open | Project gate fails on unreachable `humanize/1` clause. | Remove or make clause reachable without suppressing warning. | `mix precommit` exits 0 |
+| TEST-003 | Medium | fixed | Removed unreachable `humanize/1` warning and restored fallback handling. | Remove or make clause reachable without suppressing warning. | `mix precommit` exits 0 |
 
 ## Cleanup Candidates
 
@@ -69,7 +69,33 @@ None yet.
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-08 | `mix test` | 38 tests passed |
+| 2026-08-09 | `mix test` | 46 tests passed |
+| 2026-08-09 | `mix precommit` | Passed |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
-| 2026-08-08 | `mix precommit` | Failed: unreachable `humanize/1` clause in `lib/payroll_api_web/live/payroll_live.ex:35` |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
+
+## Recent Changes (2026-08-09)
+
+- **PAY-001**: Fixed EPF employer rate direction (now 13% at/below RM5,000; 12% above). Still needs official KWSP Third Schedule validation.
+- **PAY-003**: Domain/API reject unsupported years; selected rates snapshot reaches PCB.
+- **PAY-004**: Integer-sen helper drives EPF/HRDF percentage calculations; full migration remains open.
+- **PAY-005**: HRDF mode selection exists; official eligibility and wage-base validation remain open.
+- **SEC-001**: Key-management routes use master-key pipeline; route authorization tests remain open.
+- **API-002**: PDF syntax now parses and text extracts; automated and identity-field work remains open.
+- **TEST-003**: Fixed unreachable `humanize/1` warning; `mix precommit` passes.
+
+Pending: DaisyUI dependency removal blocked by file encoding issues.
+
+## Remediation Pass Results (2026-08-09)
+
+- Domain and API unsupported-year fallback removed; PCB receives selected rate snapshot.
+- Master-key plug now uses same environment/application-config lookup as key seeding and constant-time comparison.
+- PDF content stream now uses PDF text operators; xref points to xref start; `pdfinfo` and `pdftotext` parse generated output.
+- API and LiveView reject trailing numeric garbage.
+- LiveView handles omitted HRDF checkbox and uses Phoenix form/layout components with stable key IDs.
+- Bulk calculation returns row errors for non-map employees; negative children reject.
+- HRDF mode selection supports `standard_1pct`, `reduced_0_5pct`, and `exempt`; official eligibility and wage-base rules remain open.
+- Integer-sen helper now drives EPF/HRDF percentage calculations; PCB and full aggregation still need migration.
+- `mix test` and `mix precommit` pass with 46 tests.
+
+Remaining release blockers: official KWSP Third Schedule implementation, official LHDN MTD scope, durable tenant-aware credentials/data, full integer-sen and scheme-specific rounding, automated PDF parser test, bulk limits, LiveView interaction tests, and deployment/operations controls.

@@ -44,7 +44,8 @@ defmodule PayrollApi.Statutory.PcbTest do
     test "RM5,000 single → reasonable PCB" do
       result = Pcb.monthly(%{wage: 5000})
       assert result.annual_gross == 60_000.0
-      assert result.annual_reliefs == 13_000.0  # 9000 + 4000 EPF
+      # 9000 + 4000 EPF
+      assert result.annual_reliefs == 13_000.0
       assert result.annual_chargeable == 47_000.0
       # tax on 47000: 600 + 12000*6% = 600+720 = 1320
       assert result.annual_tax == 1_320.0

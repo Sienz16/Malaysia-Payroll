@@ -7,28 +7,36 @@ defmodule PayrollApiWeb.ApiController do
 
   @doc "GET /api/v1/rates — current statutory rates as JSON"
   def rates(conn, params) do
-    year = parse_year(params["year"])
-    lang = I18n.lang(params["lang"])
-    render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version(), lang: lang})
+    with {:ok, year} <- parse_year(params["year"]) do
+      lang = I18n.lang(params["lang"])
+      render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version(), lang: lang})
+    else
+      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
+    end
   end
 
   @doc "POST /api/v1/calculate-payslip — compute statutory breakdown for a wage"
   def calculate_payslip(conn, %{"wage" => wage} = params) do
     include_hrdf = parse_bool(params["include_hrdf"], true)
-    year = parse_year(params["year"])
+    hrdf_category = parse_hrdf_category(params["hrdf_category"])
     married = parse_bool(params["married"], false)
     children = parse_int(params["children"], 0)
     lang = I18n.lang(params["lang"])
 
-    case Payslip.calculate(%{
-           wage: wage,
-           include_hrdf: include_hrdf,
-           year: year,
-           married: married,
-           children: children
-         }) do
-      {:ok, result} -> render(conn, :payslip, %{result: result, lang: lang})
-      {:error, reason} -> render_error(conn, reason)
+    with {:ok, year} <- parse_year(params["year"]) do
+      case Payslip.calculate(%{
+             wage: wage,
+             include_hrdf: include_hrdf,
+             hrdf_category: hrdf_category,
+             year: year,
+             married: married,
+             children: children
+           }) do
+        {:ok, result} -> render(conn, :payslip, %{result: result, lang: lang})
+        {:error, reason} -> render_error(conn, reason)
+      end
+    else
+      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
     end
   end
 
@@ -39,11 +47,20 @@ defmodule PayrollApiWeb.ApiController do
   @doc "POST /api/v1/calculate-payslip/bulk — multiple employees in one call"
   def calculate_payslip_bulk(conn, %{"employees" => employees} = params) do
     include_hrdf = parse_bool(params["include_hrdf"], true)
-    year = parse_year(params["year"])
+    hrdf_category = parse_hrdf_category(params["hrdf_category"])
 
-    case Payslip.calculate_bulk(%{employees: employees, include_hrdf: include_hrdf, year: year}) do
-      {:ok, result} -> json(conn, %{success: true, data: result})
-      {:error, reason} -> render_error(conn, reason)
+    with {:ok, year} <- parse_year(params["year"]) do
+      case Payslip.calculate_bulk(%{
+             employees: employees,
+             include_hrdf: include_hrdf,
+             hrdf_category: hrdf_category,
+             year: year
+           }) do
+        {:ok, result} -> json(conn, %{success: true, data: result})
+        {:error, reason} -> render_error(conn, reason)
+      end
+    else
+      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
     end
   end
 
@@ -53,26 +70,28 @@ defmodule PayrollApiWeb.ApiController do
 
   @doc "GET /api/v1/payslip.pdf?wage=5000 — download payslip as PDF"
   def payslip_pdf(conn, params) do
-    case parse_wage_param(params) do
-      {:ok, wage} ->
-        include_hrdf = parse_bool(params["include_hrdf"], true)
-        year = parse_year(params["year"])
+    with {:ok, wage} <- parse_wage_param(params),
+         {:ok, year} <- parse_year(params["year"]) do
+      include_hrdf = parse_bool(params["include_hrdf"], true)
 
-        case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf, year: year}) do
-          {:ok, result} ->
-            pdf = PayrollApi.Pdf.payslip(result)
+      case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf, year: year}) do
+        {:ok, result} ->
+          pdf = PayrollApi.Pdf.payslip(result)
 
-            conn
-            |> put_resp_content_type("application/pdf")
-            |> put_resp_header("content-disposition", ~s(attachment; filename="payslip-#{wage}.pdf"))
-            |> send_resp(200, pdf)
+          conn
+          |> put_resp_content_type("application/pdf")
+          |> put_resp_header(
+            "content-disposition",
+            ~s(attachment; filename="payslip-#{wage}.pdf")
+          )
+          |> send_resp(200, pdf)
 
-          {:error, reason} ->
-            render_error(conn, reason)
-        end
-
-      {:error, reason} ->
-        render_error(conn, reason)
+        {:error, reason} ->
+          render_error(conn, reason)
+      end
+    else
+      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -80,8 +99,8 @@ defmodule PayrollApiWeb.ApiController do
 
   defp parse_wage_param(%{"wage" => wage}) when is_binary(wage) do
     case Float.parse(wage) do
-      {w, _} -> {:ok, w}
-      :error -> {:error, :invalid_wage}
+      {w, ""} -> {:ok, w}
+      _ -> {:error, :invalid_wage}
     end
   end
 
@@ -104,14 +123,27 @@ defmodule PayrollApiWeb.ApiController do
     end
   end
 
-  defp parse_year(nil), do: 2026
-  defp parse_year(y) when is_integer(y), do: y
+  defp parse_year(nil), do: {:ok, 2026}
+
+  defp parse_year(y) when is_integer(y) do
+    if y in Rates.supported_years(),
+      do: {:ok, y},
+      else: {:error, :unsupported_year}
+  end
+
   defp parse_year(y) when is_binary(y) do
     case Integer.parse(y) do
-      {n, _} -> n
-      :error -> 2026
+      {n, ""} ->
+        if n in Rates.supported_years(),
+          do: {:ok, n},
+          else: {:error, :unsupported_year}
+
+      _ ->
+        {:error, :unsupported_year}
     end
   end
+
+  defp parse_year(_), do: {:error, :unsupported_year}
 
   defp parse_bool(nil, default), do: default
   defp parse_bool("false", _), do: false
@@ -120,13 +152,17 @@ defmodule PayrollApiWeb.ApiController do
   defp parse_bool(true, _), do: true
   defp parse_bool(_, default), do: default
 
+  defp parse_hrdf_category("reduced_0_5pct"), do: :reduced_0_5pct
+  defp parse_hrdf_category("exempt"), do: :exempt
+  defp parse_hrdf_category(_), do: :standard_1pct
+
   defp parse_int(nil, default), do: default
   defp parse_int(v, _default) when is_integer(v), do: v
 
   defp parse_int(v, default) when is_binary(v) do
     case Integer.parse(v) do
-      {n, _} -> n
-      :error -> default
+      {n, ""} -> n
+      _ -> default
     end
   end
 
@@ -141,6 +177,8 @@ defmodule PayrollApiWeb.ApiController do
   defp reason_to_message(:wage_required), do: "wage is required (number)"
   defp reason_to_message(:invalid_wage), do: "wage must be a number"
   defp reason_to_message(:negative_wage), do: "wage cannot be negative"
+  defp reason_to_message(:invalid_children), do: "children must be a non-negative integer"
   defp reason_to_message(:invalid_input), do: "invalid input"
+  defp reason_to_message(:unsupported_year), do: "unsupported year"
   defp reason_to_message(other), do: inspect(other)
 end

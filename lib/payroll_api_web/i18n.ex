@@ -60,6 +60,7 @@ defmodule PayrollApiWeb.I18n do
 
   @doc "Translate a label key for the language."
   def t(lang, key) do
-    get_in(@translations, [lang, key]) || get_in(@translations, ["en", key]) || Atom.to_string(key)
+    get_in(@translations, [lang, key]) || get_in(@translations, ["en", key]) ||
+      Atom.to_string(key)
   end
 end

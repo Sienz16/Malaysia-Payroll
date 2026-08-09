@@ -3,16 +3,22 @@ defmodule PayrollApi.Statutory.RatesTest do
 
   alias PayrollApi.Statutory.Rates
 
-  test "epf: 11% employee, 12% employer below 5k" do
+  test "epf: 11% employee, 13% employer at/below 5k" do
     result = Rates.epf(4800)
-    # 4800 * 0.11 = 528.0 ; 4800 * 0.12 = 576.0
+    # 4800 * 0.11 = 528.0 ; 4800 * 0.13 = 624.0
     assert result.employee == 528.0
-    assert result.employer == 576.0
+    assert result.employer == 624.0
   end
 
-  test "epf: employer rate 13% at/above 5k" do
+  test "epf: employer rate 12% above 5k" do
+    result = Rates.epf(5001)
+    # 5001 * 0.11 = 550.11 ; 5001 * 0.12 = 600.12
+    assert result.employee == 550.11
+    assert result.employer == 600.12
+  end
+
+  test "epf: boundary exactly 5k uses 13% employer rate" do
     result = Rates.epf(5000)
-    # wage == threshold → over 5k rate (13%)
     assert result.employee == 550.0
     assert result.employer == 650.0
   end
@@ -53,6 +59,11 @@ defmodule PayrollApi.Statutory.RatesTest do
     result = Rates.hrdf(5000)
     assert result.employee == 0
     assert result.employer == 50.0
+  end
+
+  test "hrdf supports reduced and exempt categories" do
+    assert Rates.hrdf(5000, nil, category: :reduced_0_5pct).employer == 25.0
+    assert Rates.hrdf(5000, nil, category: :exempt).employer == 0
   end
 
   test "round_money rounds to 2 decimals" do
