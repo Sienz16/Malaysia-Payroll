@@ -2,29 +2,29 @@
 
 > Project: Malaysia Payroll Statutory API (Sienz16/Malaysia-Payroll)
 > Stack: Phoenix 1.8.9 / Elixir 1.18.4 / OTP 25 / LiveView
-> Status: v0.1 shipped — core engine (EPF/SOCSO/EIS/HRDF) live
+> Status: prototype API shipped — production statutory validation remains open
 
 ---
 
-## Current State (v0.1 ✅)
+## Current State (prototype)
 
 - `GET /api/v1/rates` — statutory rate tables (2026)
-- `POST /api/v1/calculate-payslip` — EPF + SOCSO + EIS + HRDF breakdown
+- `POST /api/v1/calculate-payslip` — EPF + SOCSO + EIS + HRDF + simplified PCB breakdown
 - LiveView calculator UI + API docs page
-- 17 tests passing, Conventional Commits enforced
+- 107 tests passing, Conventional Commits enforced
 - GitHub: Sienz16/Malaysia-Payroll (main)
 
 ---
 
-## Sprint 1 — PCB (Income Tax) — THE big feature
+## Sprint 1 — PCB (Income Tax) — partial
 
 ### Goal
 Implement Monthly PCB (Potongan Cukai Bulanan) calculation so payslip
 includes income tax — the piece that makes the API real for employers.
 
 ### Tasks
-- [x] S1.1 Research current PCB method (MTD/Method 1 & 2, 2025/2026 budget changes)
-- [x] S1.2 Build PCB module: monthly tax deduction from annual chargeable income
+- [x] S1.1 Research current PCB method
+- [x] S1.2 Build simplified Method 1 calculation
 - [x] S1.3 Add tax relief data (individual RM9,000, EPF relief RM4,000, etc.)
 - [x] S1.4 Add married/children/spouse relief modifiers
 - [x] S1.5 Integrate PCB into calculate-payslip response
@@ -32,7 +32,7 @@ includes income tax — the piece that makes the API real for employers.
 
 ### Acceptance
 - payslip response includes `pcb` in employee contributions
-- known-answer tests match LHDN published examples
+- simplified calculation is covered by focused tests; official LHDN MTD known-answer coverage remains open
 
 ---
 
@@ -55,18 +55,18 @@ rate updates a data-only change.
 
 ---
 
-## Sprint 3 — Auth, Rate Limits & Production
+## Sprint 3 — Auth, Rate Limits & Operations — partial
 
 ### Goal
-Make the API safe to expose publicly.
+Add prototype auth and bounded request handling; production controls remain open.
 
 ### Tasks
 - [x] S3.1 API key auth (Bearer) with per-key usage tracking
 - [x] S3.2 Rate limiting per key (free tier: e.g. 1,000 req/mo)
 - [x] S3.3 CORS + security headers
-- [x] S3.4 Production release build (MIX_ENV=prod)
-- [x] S3.5 systemd service (auto-start on reboot)
-- [x] S3.6 Domain + Traefik SSL (payroll.dpnc.my — route already staged)
+- [ ] S3.4 Production release and deployment verification
+- [ ] S3.5 Reproducible service/rollback artifacts
+- [ ] S3.6 Trusted proxy and HTTPS deployment verification
 
 ### Acceptance
 - unauthenticated requests rejected 401
@@ -97,7 +97,7 @@ Developer-facing polish + LLM discoverability.
 
 - [x] S5.1 Bulk payslip (multiple employees one call)
 - [x] S5.2 Payslip PDF export
-- [x] S5.3 Employee profile persistence (DB)
+- [ ] S5.3 Employee profile persistence (DB)
 - [x] S5.4 EIS/SOCSO bracket tables (actual PERKESO brackets, not flat %)
 - [x] S5.5 i18n (BM + EN responses)
 
@@ -109,7 +109,7 @@ Developer-facing polish + LLM discoverability.
 - Tests green (mix test)
 - Conventional commit per task
 - Pushed to origin/main
-- Verified live (curl)
+- [ ] Verified live (curl)
 
 ---
 
