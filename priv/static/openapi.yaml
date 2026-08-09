@@ -256,6 +256,10 @@ paths:
                 year:
                   type: integer
                   default: 2026
+                hrdf_category:
+                  type: string
+                  enum: [standard_1pct, reduced_0_5pct, exempt]
+                  default: standard_1pct
       responses:
         "200":
           description: Per-row payslip results
@@ -298,15 +302,15 @@ paths:
           required: true
           schema: { type: number }
           description: Gross monthly wage in RM
-         - name: year
-           in: query
-           required: false
-           schema: { type: integer, default: 2026 }
-         - name: include_hrdf
-           in: query
-           required: false
-           schema: { type: boolean, default: true }
-           description: Include HRDF levy
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer, default: 2026 }
+        - name: include_hrdf
+          in: query
+          required: false
+          schema: { type: boolean, default: true }
+          description: Include HRDF levy
       responses:
         "200":
           description: PDF document
@@ -389,10 +393,16 @@ paths:
       responses:
         "200":
           description: Key removed (or error payload for master key / unknown key)
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Key not found
+        "422":
+          description: Master key cannot be removed
         "429":
           $ref: "#/components/responses/RateLimited"
 components:

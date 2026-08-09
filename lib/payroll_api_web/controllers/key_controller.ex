@@ -17,8 +17,13 @@ defmodule PayrollApiWeb.KeyController do
   @doc "POST /api/v1/keys — register a new API key"
   def create(conn, %{"key" => key}) do
     case Keys.add(key) do
-      :ok -> json(conn, %{success: true, message: "key added"})
-      {:error, reason} -> json(conn, %{success: false, error: inspect(reason)})
+      :ok ->
+        json(conn, %{success: true, message: "key added"})
+
+      {:error, reason} ->
+        conn
+        |> put_status(key_error_status(reason))
+        |> json(%{success: false, error: inspect(reason)})
     end
   end
 
@@ -31,8 +36,17 @@ defmodule PayrollApiWeb.KeyController do
   @doc "DELETE /api/v1/keys/:key — remove a key"
   def delete(conn, %{"key" => key}) do
     case Keys.remove(key) do
-      :ok -> json(conn, %{success: true, message: "key removed"})
-      {:error, reason} -> json(conn, %{success: false, error: inspect(reason)})
+      :ok ->
+        json(conn, %{success: true, message: "key removed"})
+
+      {:error, reason} ->
+        conn
+        |> put_status(key_error_status(reason))
+        |> json(%{success: false, error: inspect(reason)})
     end
   end
+
+  defp key_error_status(:master_key), do: 422
+  defp key_error_status(:not_found), do: 404
+  defp key_error_status(:key_too_short), do: 400
 end

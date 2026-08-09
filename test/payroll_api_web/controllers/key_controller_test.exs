@@ -53,7 +53,12 @@ defmodule PayrollApiWeb.KeyControllerTest do
 
   test "DELETE /api/v1/keys/:key cannot remove the master key", %{conn: conn} do
     conn = delete(auth(conn, @master_key), ~p"/api/v1/keys/#{@master_key}")
-    assert json_response(conn, 200)["success"] == false
+    assert json_response(conn, 422)["success"] == false
     assert PayrollApi.Keys.valid?(@master_key)
+  end
+
+  test "DELETE /api/v1/keys/:key unknown key returns 404", %{conn: conn} do
+    conn = delete(auth(conn, @master_key), ~p"/api/v1/keys/unknown-key-999")
+    assert json_response(conn, 404)["success"] == false
   end
 end
