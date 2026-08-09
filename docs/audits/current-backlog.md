@@ -39,7 +39,7 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | UI-003 | High | in_progress | Landing page, separate `/calculator` playground, navigation, and redesigned `/api-docs` now exist; responsive/accessibility interaction coverage and screenshot review remain. | Build responsive landing page, API playground, trust/source messaging, clear docs CTA, and modern visual system without adding a UI framework. | `mix test`/`mix precommit` pass; browser/mobile review and screenshot review pending |
 | ARCH-001 | Medium | open | Web layer calls internal calculators, PDF, keys, and raw ETS directly. | Use existing `PayrollApi` module as thin public context; keep storage internals private. | Compile plus focused context/controller tests |
 | ARCH-002 | Medium | in_progress | Parsing and error mapping differ across API, bulk, PDF, and LiveView. | One input normalization policy and stable public error mapper. | Wage/children parsing now shared across single, bulk, and PDF boundaries; LiveView still has its own inline parse |
-| DOC-001 | Medium | in_progress | OpenAPI is now canonical: bulk/PDF/openapi endpoints documented, stale SOCSO/EIS schema and EPF rate direction fixed, `/keys/{key}` path matches router, stale digested artifact removed. | Make OpenAPI canonical; align routes, auth, schemas, examples, and versions. | OpenAPI contract tests pass (openapi_contract_test.exs, 6 tests); README/changelog drift review pending |
+| DOC-001 | Medium | in_progress | OpenAPI now documents bulk employee profiles, PDF HRDF option, and key deletion error statuses; route/schema parser-depth and README/changelog drift review remain. | Make OpenAPI canonical; align routes, auth, schemas, examples, and versions. | OpenAPI contract tests pass; key error contract tests pass; README/changelog drift review pending |
 | OPS-001 | Medium | open | Health endpoint is liveness-only and production may start without usable API key. | Fail invalid production configuration at startup; add separate readiness checks. | Production-config and readiness tests |
 | OPS-002 | Medium | open | Claimed release/systemd deployment lacks repository artifacts, CI, runbook, or rollback process. | Add reproducible release/deployment artifacts or remove claims. | CI release smoke test |
 | OPS-003 | Medium | open | Metrics exist without reporter; security/payroll audit events are absent. | Choose reporter and actionable signals, or remove unused telemetry until needed; persist security audit events before production. | Reporter smoke test and audit-event tests |
@@ -82,8 +82,8 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-09 | `mix test` | 104 tests passed |
-| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 104 tests) |
+| 2026-08-09 | `mix test` | 105 tests passed |
+| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 105 tests) |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
 
@@ -101,6 +101,7 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 - **PAY-006**: SOCSO Category 2 (60+), EIS eligibility (zero for 60+/non-Malaysian), flat EPF for non-Malaysian reach the payslip.
 - **UI-002**: Calculator LiveView interaction tests (render, submit, error, omitted checkbox, zero wage) + landing/docs coverage.
 - **DOC-001**: OpenAPI canonical — bulk, PDF, openapi endpoints added; SOCSO/EIS bracket schema fixed (ceiling RM6,000); EPF direction corrected; `/keys/{key}` matches router; contract tests added.
+- **DOC-001**: Bulk employee profile fields, PDF `include_hrdf`, and key deletion `404`/`422` responses aligned with OpenAPI.
 - **ARCH-004**: Stale digested OpenAPI artifact removed.
 - **TEST-002**: +52 tests across key auth, rate limiter, LiveView, Money, OpenAPI contract, malformed input, zero-wage, and bulk statutory profiles.
 
