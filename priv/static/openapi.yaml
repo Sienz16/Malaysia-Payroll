@@ -60,9 +60,10 @@ paths:
                         type: object
                         properties:
                           employee_rate: { type: number, example: 0.11 }
-                          employer_rate_under_5k: { type: number, example: 0.12 }
-                          employer_rate_over_5k: { type: number, example: 0.13 }
+                          employer_rate_at_or_under_5k: { type: number, example: 0.13 }
+                          employer_rate_over_5k: { type: number, example: 0.12 }
                           wage_threshold: { type: number, example: 5000 }
+                          schedule_required_below_rm: { type: number, example: 20000.01 }
                       socso:
                         type: object
                         properties:
@@ -116,6 +117,17 @@ paths:
                 children:
                   type: integer
                   default: 0
+                citizenship:
+                  type: string
+                  enum: [malaysian, non_malaysian]
+                  default: malaysian
+                age_60_plus:
+                  type: boolean
+                  default: false
+                hrdf_category:
+                  type: string
+                  enum: [standard_1pct, reduced_0_5pct, exempt]
+                  default: standard_1pct
                 year:
                   type: integer
                   default: 2026

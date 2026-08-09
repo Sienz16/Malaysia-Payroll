@@ -248,7 +248,8 @@ defmodule PayrollApi.Statutory.Rates do
         employee_rate: 0.11,
         employer_rate_at_or_under_5k: 0.13,
         employer_rate_over_5k: 0.12,
-        wage_threshold: 5000
+        wage_threshold: 5000,
+        schedule_required_below_rm: 20_000.01
       },
       socso: %{
         wage_ceiling: 6000,
@@ -265,14 +266,15 @@ defmodule PayrollApi.Statutory.Rates do
       },
       minimum_wage: 1700,
       sources: %{
-        epf: "KWSP — 11%/12%/13% (verified vs 2026 reference)",
+        epf:
+          "KWSP Third Schedule effective October 2025; wage-range table below RM20,000.01; percentage rules above",
         socso: "PERKESO Oct 2024 revision, ceiling RM6,000 (verified)",
         eis: "SIP Act 2017, ceiling RM6,000 (verified)",
         hrdf: "PSMB Act 2001",
         minimum_wage: "Minimum Wages Order 2025 (RM1,700, gazetted)",
         pcb: "LHDN YA 2025/2026 resident brackets (verified)"
       },
-      verified: true,
+      verified: false,
       verified_at: "2026-08-07"
     }
   end
@@ -302,20 +304,61 @@ defmodule PayrollApi.Statutory.Rates do
   Compute EPF contribution (employee + employer).
   Employer rate: 13% at/below RM5,000, 12% above.
   """
-  def epf(wage, rates \\ nil) do
+  def epf(wage, rates \\ nil, opts \\ []) do
     r = rates || rates()
-    wage_sen = Money.to_sen(wage)
+    category = Keyword.get(opts, :citizenship, :malaysian)
+    age_60_plus = Keyword.get(opts, :age_60_plus, false)
+    strict_schedule = Keyword.get(opts, :strict_schedule, false)
 
-    emp_rate =
-      if wage <= r.epf.wage_threshold,
-        do: r.epf.employer_rate_at_or_under_5k,
-        else: r.epf.employer_rate_over_5k
+    if strict_schedule and wage <= 20_000 do
+      {:error, :epf_schedule_required}
+    else
+      epf_percentage(wage, r, category, age_60_plus)
+    end
+  end
+
+  defp epf_percentage(wage, _r, :non_malaysian, _age_60_plus) do
+    wage_sen = Money.to_sen(wage)
+    employee_sen = Money.percentage(wage_sen, 2, 100)
+    employer_sen = Money.percentage(wage_sen, 2, 100)
+    {employee_sen, employer_sen} = round_epf_total(wage, employee_sen, employer_sen)
 
     %{
-      employee: Money.to_ringgit(Money.percentage(wage_sen, r.epf.employee_rate)),
-      employer: Money.to_ringgit(Money.percentage(wage_sen, emp_rate))
+      employee: Money.to_ringgit(employee_sen),
+      employer: Money.to_ringgit(employer_sen)
     }
   end
+
+  defp epf_percentage(wage, _r, _citizenship, true) do
+    wage_sen = Money.to_sen(wage)
+    {employee_sen, employer_sen} = round_epf_total(wage, 0, Money.percentage(wage_sen, 4, 100))
+
+    %{
+      employee: Money.to_ringgit(employee_sen),
+      employer: Money.to_ringgit(employer_sen)
+    }
+  end
+
+  defp epf_percentage(wage, r, _citizenship, false) do
+    wage_sen = Money.to_sen(wage)
+
+    employer_rate = if wage <= r.epf.wage_threshold, do: 13, else: 12
+    employee_sen = Money.percentage(wage_sen, 11, 100)
+    employer_sen = Money.percentage(wage_sen, employer_rate, 100)
+    {employee_sen, employer_sen} = round_epf_total(wage, employee_sen, employer_sen)
+
+    %{
+      employee: Money.to_ringgit(employee_sen),
+      employer: Money.to_ringgit(employer_sen)
+    }
+  end
+
+  defp round_epf_total(wage, employee_sen, employer_sen) when wage > 20_000 do
+    total = Money.ceil_ringgit(employee_sen + employer_sen)
+    {employee_sen, total - employee_sen}
+  end
+
+  defp round_epf_total(_wage, employee_sen, employer_sen), do: {employee_sen, employer_sen}
 
   @doc """
   SOCSO (PERKESO) contribution — Category 1 (below 60) bracket table,
@@ -359,12 +402,12 @@ defmodule PayrollApi.Statutory.Rates do
 
     %{
       employee: 0,
-      employer: Money.to_ringgit(Money.percentage(wage_sen, rate))
+      employer: Money.to_ringgit(Money.percentage(wage_sen, rate, 1000))
     }
   end
 
-  defp hrdf_rate(rates, :standard_1pct), do: rates.hrdf.employer_rate
-  defp hrdf_rate(_rates, :reduced_0_5pct), do: 0.005
+  defp hrdf_rate(_rates, :standard_1pct), do: 10
+  defp hrdf_rate(_rates, :reduced_0_5pct), do: 5
   defp hrdf_rate(_rates, :exempt), do: 0
   defp hrdf_rate(_rates, _), do: raise(ArgumentError, "invalid HRDF category")
 

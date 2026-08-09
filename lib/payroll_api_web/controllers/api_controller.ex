@@ -28,6 +28,8 @@ defmodule PayrollApiWeb.ApiController do
              wage: wage,
              include_hrdf: include_hrdf,
              hrdf_category: hrdf_category,
+             citizenship: parse_citizenship(params["citizenship"]),
+             age_60_plus: parse_bool(params["age_60_plus"], false),
              year: year,
              married: married,
              children: children
@@ -54,6 +56,8 @@ defmodule PayrollApiWeb.ApiController do
              employees: employees,
              include_hrdf: include_hrdf,
              hrdf_category: hrdf_category,
+             citizenship: parse_citizenship(params["citizenship"]),
+             age_60_plus: parse_bool(params["age_60_plus"], false),
              year: year
            }) do
         {:ok, result} -> json(conn, %{success: true, data: result})
@@ -155,6 +159,9 @@ defmodule PayrollApiWeb.ApiController do
   defp parse_hrdf_category("reduced_0_5pct"), do: :reduced_0_5pct
   defp parse_hrdf_category("exempt"), do: :exempt
   defp parse_hrdf_category(_), do: :standard_1pct
+
+  defp parse_citizenship("non_malaysian"), do: :non_malaysian
+  defp parse_citizenship(_), do: :malaysian
 
   defp parse_int(nil, default), do: default
   defp parse_int(v, _default) when is_integer(v), do: v

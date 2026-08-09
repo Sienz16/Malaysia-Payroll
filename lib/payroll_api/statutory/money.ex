@@ -36,9 +36,15 @@ defmodule PayrollApi.Statutory.Money do
   @doc "Subtract two sen values exactly."
   def sub(a, b) when is_integer(a) and is_integer(b), do: a - b
 
-  @doc "Scale a sen value by a percentage rate, returning sen."
-  def percentage(sen, rate) when is_integer(sen) and is_number(rate),
-    do: round(sen * rate)
+  @doc "Scale a sen value by a percentage fraction, returning sen."
+  def percentage(sen, numerator, denominator)
+      when is_integer(sen) and is_integer(numerator) and is_integer(denominator) and
+             denominator > 0 do
+    div(sen * numerator + div(denominator, 2), denominator)
+  end
+
+  @doc "Round total contribution up to whole ringgit, expressed in sen."
+  def ceil_ringgit(sen) when is_integer(sen), do: div(sen + 99, 100) * 100
 
   @doc "Sum a list of sen values."
   def sum(values) when is_list(values), do: Enum.sum(values)

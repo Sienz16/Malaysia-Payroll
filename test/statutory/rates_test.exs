@@ -3,24 +3,27 @@ defmodule PayrollApi.Statutory.RatesTest do
 
   alias PayrollApi.Statutory.Rates
 
-  test "epf: 11% employee, 13% employer at/below 5k" do
-    result = Rates.epf(4800)
-    # 4800 * 0.11 = 528.0 ; 4800 * 0.13 = 624.0
-    assert result.employee == 528.0
-    assert result.employer == 624.0
+  test "epf: strict mode requires wage schedule below RM20,000.01" do
+    assert {:error, :epf_schedule_required} = Rates.epf(4800, nil, strict_schedule: true)
   end
 
-  test "epf: employer rate 12% above 5k" do
-    result = Rates.epf(5001)
-    # 5001 * 0.11 = 550.11 ; 5001 * 0.12 = 600.12
-    assert result.employee == 550.11
-    assert result.employer == 600.12
+  test "epf: strict mode requires wage schedule at RM20,000" do
+    assert {:error, :epf_schedule_required} = Rates.epf(20_000, nil, strict_schedule: true)
   end
 
-  test "epf: boundary exactly 5k uses 13% employer rate" do
-    result = Rates.epf(5000)
-    assert result.employee == 550.0
-    assert result.employer == 650.0
+  test "epf: percentage calculation applies above RM20,000" do
+    assert Rates.epf(21_250) == %{employee: 2337.5, employer: 2550.5}
+  end
+
+  test "epf: age 60 Malaysian uses employer-only rate above RM20,000" do
+    assert Rates.epf(21_250, nil, age_60_plus: true) == %{employee: 0.0, employer: 850.0}
+  end
+
+  test "epf: non-Malaysian uses 2% shares" do
+    assert Rates.epf(21_250, nil, citizenship: :non_malaysian) == %{
+             employee: 425.0,
+             employer: 425.0
+           }
   end
 
   test "socso: Category 1 brackets, RM6,000 ceiling (verified 2024)" do

@@ -96,7 +96,13 @@ defmodule PayrollApi.Statutory.Payslip do
   defp calculate_with_rates(wage, opts, year, rates) do
     include_hrdf = Map.get(opts, :include_hrdf, true)
     hrdf_category = Map.get(opts, :hrdf_category, :standard_1pct)
-    epf = Rates.epf(wage, rates)
+
+    epf =
+      Rates.epf(wage, rates,
+        citizenship: Map.get(opts, :citizenship, :malaysian),
+        age_60_plus: Map.get(opts, :age_60_plus, false)
+      )
+
     socso = Rates.socso(wage, rates)
     eis = Rates.eis(wage, rates)
 
