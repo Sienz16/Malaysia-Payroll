@@ -40,6 +40,9 @@ defmodule PayrollApiWeb.Endpoint do
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
+    length: 1_000_000,
+    read_length: 1_000_000,
+    read_timeout: 15_000,
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 

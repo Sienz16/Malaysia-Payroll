@@ -1,42 +1,6 @@
 defmodule PayrollApiWeb.PayrollLive do
   use PayrollApiWeb, :live_view
 
-  alias PayrollApi.Statutory.Payslip
-
-  @impl true
-  def mount(_params, _session, socket) do
-    form = to_form(%{"wage" => "5000", "include_hrdf" => "true"})
-    {:ok, assign(socket, form: form, include_hrdf: true, result: nil, error: nil)}
-  end
-
-  @impl true
-  def handle_event("calculate", %{"wage" => wage} = params, socket) do
-    include_hrdf = Map.get(params, "include_hrdf", "false") == "true"
-
-    case Float.parse(wage) do
-      {wage, ""} ->
-        case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf}) do
-          {:ok, result} ->
-            form = to_form(%{"wage" => wage, "include_hrdf" => to_string(include_hrdf)})
-
-            {:noreply,
-             assign(socket, result: result, error: nil, include_hrdf: include_hrdf, form: form)}
-
-          {:error, reason} ->
-            {:noreply, assign(socket, error: humanize(reason), result: nil)}
-        end
-
-      _ ->
-        {:noreply, assign(socket, error: "Enter a valid monthly wage.", result: nil)}
-    end
-  end
-
-  defp humanize(:wage_required), do: "Enter a monthly wage."
-  defp humanize(:invalid_wage), do: "Wage must be a number."
-  defp humanize(:negative_wage), do: "Wage cannot be negative."
-  defp humanize(:zero_wage), do: "Wage must be greater than zero."
-  defp humanize(other), do: "Calculation error: #{inspect(other)}"
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -60,7 +24,7 @@ defmodule PayrollApiWeb.PayrollLive do
               <.link id="hero-docs-cta" navigate={~p"/api-docs"} class="button button-ghost">Read the API docs</.link>
             </div>
             <div class="hero-meta">
-              <span><b>77</b> automated tests</span>
+              <span><b>105</b> automated tests</span>
               <span><b>2025–26</b> rate snapshots</span>
               <span><b>JSON</b> + PDF output</span>
             </div>

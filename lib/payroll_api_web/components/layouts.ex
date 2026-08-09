@@ -35,6 +35,7 @@ defmodule PayrollApiWeb.Layouts do
 
   def app(assigns) do
     ~H"""
+    <a href="#main-content" class="sr-only focus:not-sr-only">Skip to content</a>
     <nav id="site-navigation" class="site-nav">
       <div class="shell nav-inner">
         <.link navigate={~p"/"} class="brand-mark" aria-label="Malaysia Payroll API home">

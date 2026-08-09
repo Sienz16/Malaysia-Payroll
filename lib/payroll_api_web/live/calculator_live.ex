@@ -93,15 +93,19 @@ defmodule PayrollApiWeb.CalculatorLive do
                   label="Include HRDF levy (standard 1%)"
                 />
               </div>
-              <button id="calculate-payslip" type="submit" class="button button-mint calc-submit">Run calculation
-              <span aria-hidden="true">↗</span></button>
+              <button
+                id="calculate-payslip"
+                type="submit"
+                class="button button-mint calc-submit"
+                phx-disable-with="Calculating..."
+              >Run calculation <span aria-hidden="true">↗</span></button>
             </.form>
 
             <%= if @error do %>
-              <div id="calculator-error" class="disclaimer">{@error}</div>
+              <div id="calculator-error" class="disclaimer" role="alert">{@error}</div>
             <% end %>
             <%= if @result do %>
-              <div id="calculation-result" class="result-panel">
+              <div id="calculation-result" class="result-panel" role="status" aria-live="polite">
                 <div class="result-top">
                   <h2>Estimated result</h2><span class="result-pill">rates v{@result.rates_version}</span>
                 </div>

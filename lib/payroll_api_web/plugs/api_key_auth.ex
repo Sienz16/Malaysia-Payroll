@@ -28,9 +28,7 @@ defmodule PayrollApiWeb.Plug.ApiKeyAuth do
         if valid_key?(key) do
           conn
           |> assign(:api_key, key)
-          |> Plug.Conn.register_before_send(fn c ->
-            put_resp_header(c, "x-api-key-used", String.slice(key, 0, 8))
-          end)
+          |> Plug.Conn.register_before_send(fn c -> c end)
         else
           unauthorized(conn)
         end

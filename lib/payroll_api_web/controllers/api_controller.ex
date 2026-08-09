@@ -9,7 +9,7 @@ defmodule PayrollApiWeb.ApiController do
   def rates(conn, params) do
     with {:ok, year} <- parse_year(params["year"]) do
       lang = I18n.lang(params["lang"])
-      render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version(), lang: lang})
+      render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version(year), lang: lang})
     else
       {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
     end
