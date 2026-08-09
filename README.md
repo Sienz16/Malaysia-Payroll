@@ -2,7 +2,7 @@
 
 **EPF · SOCSO · EIS · HRDF · PCB** — Malaysian statutory payroll calculations as a clean REST API. Built with Phoenix 1.8.9 / Elixir 1.18.
 
-> Public statutory data, computed correctly, with current-year tables kept as data so budget changes are a one-file update.
+> Stateless statutory calculation prototype with explicit source and compliance limitations.
 
 ---
 
@@ -12,8 +12,11 @@
 |---|---|
 | `GET /api/v1/health` | Liveness probe (public) |
 | `GET /api/v1/rates` | Current statutory rate tables (EPF/SOCSO/EIS/HRDF, min wage) |
-| `POST /api/v1/calculate-payslip` | Full payslip: EPF + SOCSO + EIS + HRDF + PCB → net pay |
-| `GET /api/v1/keys` | Manage API keys (auth required) |
+| `POST /api/v1/calculate-payslip` | Statutory breakdown: EPF + SOCSO + EIS + HRDF + simplified PCB |
+| `POST /api/v1/calculate-payslip/bulk` | Calculate up to 500 employee rows |
+| `GET /api/v1/payslip.pdf` | Download sample PDF output |
+| `GET /api/v1/openapi.yaml` | OpenAPI contract (public) |
+| `GET/POST/DELETE /api/v1/keys` | Master-key-only key administration |
 
 ## 🚀 Quickstart
 
@@ -40,15 +43,15 @@ curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
   "data": {
     "wage": 5000,
     "employee_contributions": {
-      "epf": 550.0, "socso": 20.0, "eis": 8.0, "hrdf": 0, "pcb": 110.0,
-      "total": 688.0
+      "epf": 550.0, "socso": 24.75, "eis": 9.9, "hrdf": 0, "pcb": 110.0,
+      "total": 694.65
     },
     "employer_contributions": {
-      "epf": 650.0, "socso": 70.0, "eis": 8.0, "hrdf": 50.0,
-      "total": 778.0
+      "epf": 650.0, "socso": 84.55, "eis": 9.9, "hrdf": 50.0,
+      "total": 794.45
     },
-    "net_pay": 4312.0,
-    "total_statutory_cost": 5778.0
+    "net_pay": 4305.35,
+    "total_statutory_cost": 5794.45
   }
 }
 ```
@@ -61,8 +64,12 @@ curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
 |---|---|---|---|---|
 | `wage` | number | ✅ | — | Gross monthly wage (RM) |
 | `include_hrdf` | bool | — | `true` | Apply HRDF levy |
-| `married` | bool | — | `false` | Spouse tax relief (RM4,000/yr) |
+| `married` | bool | — | `false` | Marital status only; does not grant spouse relief |
+| `spouse_eligible` | bool | — | `false` | Non-working spouse qualifies for relief |
 | `children` | int | — | `0` | Children under 18 (RM2,000/yr each) |
+| `citizenship` | enum | — | `malaysian` | `malaysian` or `non_malaysian` |
+| `age_60_plus` | bool | — | `false` | Selects age-60-plus contribution rules |
+| `hrdf_category` | enum | — | `standard_1pct` | `standard_1pct`, `reduced_0_5pct`, or `exempt` |
 | `year` | int | — | `2026` | Rate year |
 
 ### Errors
@@ -79,9 +86,13 @@ curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
 # Elixir 1.18+ / OTP 25+ required
 mix deps.get
 mix phx.server          # http://localhost:4000
-mix test                # 101 tests
+mix test                # 105 tests
 mix precommit           # compile --warnings-as-errors + format + tests
 ```
+
+## ⚠️ Production Limits
+
+EPF wage-range schedules below RM20,000.01, full LHDN MTD/PCB workflows, HRD Corp eligibility rules, durable credentials, tenant isolation, and payroll persistence are not complete. Do not use outputs for real payroll filing.
 
 ## 📐 Architecture
 

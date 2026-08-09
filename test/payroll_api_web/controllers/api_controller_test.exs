@@ -52,6 +52,12 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert json_response(conn, 400)["error"]["message"] =~ "unsupported year"
   end
 
+  test "GET /api/v1/rates returns selected year version", %{conn: conn} do
+    body = get(auth(conn), ~p"/api/v1/rates?year=2025") |> json_response(200)
+    assert body["version"] == "2025.2"
+    assert body["data"]["year"] == 2025
+  end
+
   test "GET /api/v1/rates rejects non-numeric year values", %{conn: conn} do
     conn = get(auth(conn), ~p"/api/v1/rates?year[]=2026")
     assert json_response(conn, 400)["error"]["message"] =~ "unsupported year"

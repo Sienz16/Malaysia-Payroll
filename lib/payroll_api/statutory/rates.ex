@@ -6,13 +6,8 @@ defmodule PayrollApi.Statutory.Rates do
   with its effective date range and source reference. Updating a year's rates
   is a data-only change (no calculation code touched).
 
-  VERIFICATION STATUS (2026-08-07 pass):
-  - PCB brackets/reliefs: VERIFIED against L&Co personal tax rate 2026 +
-    Payroll-Calculator-2026 reference (LHDN YA 2025/2026)
-  - EPF: VERIFIED 11% employee / 12-13% employer (wage threshold RM5,000)
-  - SOCSO: VERIFIED vs PERKESO Oct 2024 revision — wage ceiling RM6,000,
-    Category 1 (below 60) bracket table
-  - EIS: VERIFIED vs SIP — wage ceiling RM6,000, bracket table (0.2% base)
+  Verification status: prototype tables carry source references but require
+  official known-answer and effective-date tests before production use.
   - Minimum wage: RM1,700 (2025 gazette)
   """
 
@@ -300,6 +295,8 @@ defmodule PayrollApi.Statutory.Rates do
 
   @doc "Human-readable version string for cache headers."
   def version, do: "#{@default_year}.2"
+
+  def version(year) when is_integer(year), do: "#{year}.2"
 
   @doc "Source references for a given year."
   def sources(year \\ @default_year) do

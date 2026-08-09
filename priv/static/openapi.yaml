@@ -127,7 +127,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
   /calculate-payslip:
     post:
-      summary: Calculate full statutory payslip breakdown
+      summary: Calculate statutory payslip breakdown (prototype scope)
       operationId: calculatePayslip
       security:
         - BearerAuth: []

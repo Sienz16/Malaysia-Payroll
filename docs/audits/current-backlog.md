@@ -20,7 +20,7 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | SEC-002 | Critical | in_progress | No tenant, owner, role, or authorization boundary exists. | Documented security limitation in `ApiKeyAuth` and `Keys` modules; full tenancy requires persistence layer. | Cross-tenant behavior pinned by tests (api_controller_test.exs); `mix precommit` passes |
 | DATA-001 | Critical | open | Employee persistence is claimed but no Repo, schema, migration, or durable payroll state exists. | Either remove claim or add constrained employer/employee/payroll persistence with tenant ownership and auditability. | Migration/schema tests, restart persistence test, `mix precommit` |
 | PAY-003 | High | verified | Unsupported years now reject at domain and API boundaries; selected rates snapshot reaches PCB. | Reject unsupported years and apply one selected snapshot consistently. | Domain/API malformed-year tests; `mix test` |
-| PAY-004 | High | in_progress | Integer-sen Money helpers now drive EPF, HRDF, PCB (annual tax + monthly), and payslip aggregation. Remaining: scheme-specific rounding edge cases and official boundary known-answer coverage. | Integer sen and scheme-specific rounding throughout all payroll calculations. | 104 tests + `mix precommit` pass; official boundary and Money unit coverage added (money_test.exs) |
+| PAY-004 | High | in_progress | Integer-sen Money helpers now drive EPF, HRDF, PCB (annual tax + monthly), and payslip aggregation. Remaining: scheme-specific rounding edge cases and official boundary known-answer coverage. | Integer sen and scheme-specific rounding throughout all payroll calculations. | 105 tests + `mix precommit` pass; official boundary and Money unit coverage added (money_test.exs) |
 | PAY-005 | High | in_progress | HRDF supports declared 1%, 0.5%, and exempt modes, but employer eligibility, wage-base rules, and official category validation remain incomplete. | Model covered wage floor and categories from HRD Corp rules with known-answer tests. | HRDF mode tests pass; official HRD Corp validation pending |
 | PAY-006 | High | in_progress | Employee age, citizenship, and bulk-row statutory profiles now reach payslip orchestration: SOCSO Category 2 for 60+, zero EIS for 60+/non-Malaysian, flat EPF for non-Malaysian. Remaining: PR status and full category matrix from official rules. | Add validated employee statutory profile and route each scheme by eligibility. | Top-level and bulk profile tests pass; official category matrix pending |
 | API-001 | High | verified | Bulk calculation now shares wage normalization, returns per-row errors, and enforces a 500-employee maximum. | One shared validation boundary; per-row errors; explicit maximum batch size; no crashes on valid JSON shapes. | Malformed and maximum-size request tests pass (domain + HTTP); `mix precommit` passes |
@@ -40,6 +40,10 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | ARCH-001 | Medium | open | Web layer calls internal calculators, PDF, keys, and raw ETS directly. | Use existing `PayrollApi` module as thin public context; keep storage internals private. | Compile plus focused context/controller tests |
 | ARCH-002 | Medium | in_progress | Parsing and error mapping differ across API, bulk, PDF, and LiveView. | One input normalization policy and stable public error mapper. | Wage/children parsing now shared across single, bulk, and PDF boundaries; LiveView still has its own inline parse |
 | DOC-001 | Medium | in_progress | OpenAPI now documents bulk employee profiles, PDF HRDF option, and key deletion error statuses; route/schema parser-depth and README/changelog drift review remain. | Make OpenAPI canonical; align routes, auth, schemas, examples, and versions. | OpenAPI contract tests pass; key error contract tests pass; README/changelog drift review pending |
+| DOC-002 | Medium | in_progress | README, OpenAPI, and runtime claims aligned for current output/profile fields; changelog/sprint plan deployment and persistence claims remain stale. | Remove unsupported completion claims or add repository evidence for them. | README/runtime output aligned; SPRINT_PLAN and CHANGELOG cleanup pending |
+| SEC-005 | Medium | fixed | Removed stable API-key prefix from successful response headers. | Do not expose credential material in response metadata. | `mix test` and auth tests pass |
+| OPS-004 | High | in_progress | Added request parser body/read limits and timeout; trusted proxy and production readiness remain open. | Bound unauthenticated parser resource use and document trusted proxy boundary. | `mix precommit` passes; production deployment review pending |
+| SEC-006 | High | open | Production SSL rewrite trusts `x_forwarded_proto` without repository evidence of trusted proxy enforcement. | Document trusted proxy boundary or serve HTTPS directly with verified deployment controls. | Production deployment review |
 | OPS-001 | Medium | open | Health endpoint is liveness-only and production may start without usable API key. | Fail invalid production configuration at startup; add separate readiness checks. | Production-config and readiness tests |
 | OPS-002 | Medium | open | Claimed release/systemd deployment lacks repository artifacts, CI, runbook, or rollback process. | Add reproducible release/deployment artifacts or remove claims. | CI release smoke test |
 | OPS-003 | Medium | open | Metrics exist without reporter; security/payroll audit events are absent. | Choose reporter and actionable signals, or remove unused telemetry until needed; persist security audit events before production. | Reporter smoke test and audit-event tests |
@@ -53,10 +57,10 @@ Cleanup follows correctness and security work unless deletion removes active ris
 
 | ID | Priority | Status | Candidate | Estimated reduction |
 |---|---|---|---|---:|
-| ARCH-003 | Low | open | Delete unreachable generated Phoenix home page and action. | about 202 lines |
+| ARCH-003 | Low | verified | Deleted unreachable generated Phoenix home page and action; landing owns `/`. | about 202 lines |
 | ARCH-004 | Low | verified | Removed duplicate digested OpenAPI artifact (`openapi-2ae06d...yaml`) that carried stale EPF direction and missing profile fields. | 245 lines |
 | ARCH-005 | Low | open | Remove unused telemetry process/dependencies if no reporter is planned. | about 71 lines, 2 dependencies |
-| ARCH-006 | Low | open | Retain only used core components and remove forbidden DaisyUI code. | about 250-350 lines, 1 dependency |
+| ARCH-006 | Low | in_progress | Removed DaisyUI dependency and active plugin; generated component references/comments remain for cleanup. | about 250-350 lines, 1 dependency |
 | ARCH-007 | Low | open | Remove unused generated extension points and comments. | about 40-70 lines |
 | ARCH-008 | Low | open | Remove translated response-label payload if not contractual. | about 65-95 lines |
 
@@ -82,8 +86,8 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-09 | `mix test` | 105 tests passed |
-| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 105 tests) |
+| 2026-08-09 | `mix test` | 107 tests passed |
+| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 107 tests) |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
 
@@ -104,6 +108,17 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 - **DOC-001**: Bulk employee profile fields, PDF `include_hrdf`, and key deletion `404`/`422` responses aligned with OpenAPI.
 - **ARCH-004**: Stale digested OpenAPI artifact removed.
 - **TEST-002**: +52 tests across key auth, rate limiter, LiveView, Money, OpenAPI contract, malformed input, zero-wage, and bulk statutory profiles.
+- **OPS-004**: Added 1 MB parser body limit, read limit, and read timeout to reduce unauthenticated parser DoS exposure.
+- **UI-004**: Shared nav now remains available through tablet widths; calculator result/error states announce changes and submit disables during calculation.
+- **PAY-003**: Payslip and rates responses now return version matching selected year; regression tests added.
+- **SEC-005**: Successful auth responses no longer expose API-key prefixes.
+- **UI-005**: Added skip link and removed dead landing calculator handlers by keeping calculation only in `/calculator`.
+- **PAY-003**: Rate version now derives from selected calculation year instead of global default version.
+- **SEC-005**: Removed `x-api-key-used` response header to avoid stable credential-prefix leakage.
+- **OPS-004**: Endpoint parser now caps request length at 1 MB and applies read timeout.
+- **ARCH-003**: Removed unreachable generated Phoenix home template/action.
+- **ARCH-006**: Removed unused DaisyUI dependency from project manifest/lockfile.
+- **DOC-002**: README output, endpoint list, profile fields, test count, and production limitations aligned with runtime.
 
 Remaining release blockers: official KWSP Third Schedule implementation, official LHDN MTD scope, durable tenant-aware credentials/data, official HRD Corp eligibility, full scheme-specific rounding known-answer suites, automated PDF parser test, and deployment/operations controls.
 
@@ -117,7 +132,7 @@ Remaining release blockers: official KWSP Third Schedule implementation, officia
 - Bulk calculation returns row errors for non-map employees; negative children reject.
 - HRDF mode selection supports `standard_1pct`, `reduced_0_5pct`, and `exempt`; official eligibility and wage-base rules remain open.
 - Integer-sen helper now drives EPF/HRDF percentage calculations; PCB and full aggregation still need migration.
-- `mix test` and `mix precommit` pass with 52 tests.
+- `mix test` and `mix precommit` pass with 107 tests.
 
 Remaining release blockers: official KWSP Third Schedule implementation, official LHDN MTD scope, durable tenant-aware credentials/data, full integer-sen and scheme-specific rounding, automated PDF parser test, bulk limits, LiveView interaction tests, and deployment/operations controls.
 

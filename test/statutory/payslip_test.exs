@@ -52,6 +52,12 @@ defmodule PayrollApi.Statutory.PayslipTest do
     assert {:error, :unsupported_year} = Payslip.calculate(%{wage: 5000, year: 2099})
   end
 
+  test "selected year controls returned rates version" do
+    {:ok, result} = Payslip.calculate(%{wage: 5000, year: 2025})
+    assert result.year == 2025
+    assert result.rates_version == "2025.2"
+  end
+
   test "non-numeric wage rejected" do
     assert {:error, :invalid_wage} = Payslip.calculate(%{wage: "abc"})
   end

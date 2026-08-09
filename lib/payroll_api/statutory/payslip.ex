@@ -1,6 +1,6 @@
 defmodule PayrollApi.Statutory.Payslip do
   @moduledoc """
-  Full payslip calculation: gross wage -> statutory deductions -> net pay.
+  Prototype payslip calculation: gross wage -> statutory deductions -> net pay.
 
   Computes EPF, SOCSO, EIS, HRDF contributions (employee + employer shares),
   monthly PCB (income tax), and returns a breakdown ready for the API and
@@ -227,7 +227,7 @@ defmodule PayrollApi.Statutory.Payslip do
        },
        total_statutory_cost: Money.to_ringgit(Money.add(Money.to_sen(wage), employer_total_sen)),
        net_pay: net_pay,
-       rates_version: Rates.version()
+       rates_version: Rates.version(year)
      }}
   end
 end
