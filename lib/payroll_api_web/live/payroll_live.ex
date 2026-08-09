@@ -5,229 +5,170 @@ defmodule PayrollApiWeb.PayrollLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(wage: "5000", include_hrdf: true, result: nil, error: nil)
-     |> assign(form: to_form(%{"wage" => "5000", "include_hrdf" => "true"}))}
+    form = to_form(%{"wage" => "5000", "include_hrdf" => "true"})
+    {:ok, assign(socket, form: form, include_hrdf: true, result: nil, error: nil)}
   end
 
   @impl true
   def handle_event("calculate", %{"wage" => wage} = params, socket) do
-    include_hrdf = Map.get(params, "include_hrdf", "false")
-    hrdf = include_hrdf == "true"
+    include_hrdf = Map.get(params, "include_hrdf", "false") == "true"
 
     case Float.parse(wage) do
-      {w, ""} ->
-        case Payslip.calculate(%{wage: w, include_hrdf: hrdf}) do
+      {wage, ""} ->
+        case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf}) do
           {:ok, result} ->
+            form = to_form(%{"wage" => wage, "include_hrdf" => to_string(include_hrdf)})
+
             {:noreply,
-             socket
-             |> assign(wage: wage, include_hrdf: hrdf, result: result, error: nil)
-             |> assign(form: to_form(%{"wage" => wage, "include_hrdf" => to_string(hrdf)}))}
+             assign(socket, result: result, error: nil, include_hrdf: include_hrdf, form: form)}
 
           {:error, reason} ->
             {:noreply, assign(socket, error: humanize(reason), result: nil)}
         end
 
-      :error ->
-        {:noreply, socket |> assign(error: "Please enter a valid wage", result: nil)}
+      _ ->
+        {:noreply, assign(socket, error: "Enter a valid monthly wage.", result: nil)}
     end
   end
 
-  # Payslip.calculate/1 only returns :wage_required, :invalid_wage, or :negative_wage.
-  defp humanize(:wage_required), do: "Wage is required"
-  defp humanize(:invalid_wage), do: "Wage must be a number"
-  defp humanize(:negative_wage), do: "Wage cannot be negative"
-  defp humanize(other), do: "Error: #{inspect(other)}"
+  defp humanize(:wage_required), do: "Enter a monthly wage."
+  defp humanize(:invalid_wage), do: "Wage must be a number."
+  defp humanize(:negative_wage), do: "Wage cannot be negative."
+  defp humanize(other), do: "Calculation error: #{inspect(other)}"
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
-      <div class="min-h-screen bg-slate-50 py-10 px-4">
-        <div class="max-w-3xl mx-auto">
-          <div class="text-center mb-8">
-            <p class="text-sm font-semibold text-emerald-600 uppercase tracking-wide">
-              Malaysia Statutory Payroll API
-            </p>
-            <h1 class="text-3xl font-bold text-slate-900 mt-1">Payslip Calculator</h1>
-            <p class="text-slate-500 mt-2">EPF · SOCSO · EIS · HRDF — 2026 rates</p>
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div class="animate-in">
+          <div class="eyebrow">
+            <span class="eyebrow-dot"></span> Statutory payroll infrastructure
           </div>
+          <h1>Payroll math,<br /><em>without the maze.</em></h1>
+          <p class="hero-copy">
+            A developer-first API for Malaysia's statutory payroll calculations. Run a clean payslip breakdown, inspect the rules, and ship your integration faster.
+          </p>
+          <div class="hero-actions">
+            <.link
+              id="hero-calculator-cta"
+              navigate={~p"/calculator"}
+              class="button button-mint button-small"
+            >Run a calculation <span aria-hidden="true">↗</span></.link>
+            <.link id="hero-docs-cta" navigate={~p"/api-docs"} class="button button-ghost">Read the API docs</.link>
+          </div>
+          <div class="hero-meta">
+            <span><b>52</b> automated tests</span>
+            <span><b>2025–26</b> rate snapshots</span>
+            <span><b>JSON</b> + PDF output</span>
+          </div>
+        </div>
 
-          <.form
-            for={@form}
-            id="payroll-calculator-form"
-            phx-submit="calculate"
-            class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"
-          >
-            <label class="block text-sm font-medium text-slate-700 mb-1">Gross monthly wage (RM)</label>
-            <div class="flex gap-3 items-center">
-              <.input
-                field={@form[:wage]}
-                id="gross-wage"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="e.g. 5000"
-                class="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <button
-                id="calculate-payslip"
-                type="submit"
-                class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-lg transition"
-              >
-                Calculate
-              </button>
+        <div
+          id="hero-code-preview"
+          class="terminal animate-in delay-1"
+          aria-label="API response preview"
+        >
+          <div class="terminal-bar">
+            <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">POST /api/v1/calculate-payslip</span>
+          </div>
+          <div class="terminal-body">
+            <div>
+              <span class="code-muted">$ </span><span class="code-key">curl</span>
+              -X POST /api/v1/calculate-payslip
             </div>
-
-            <div class="mt-4 flex items-center gap-2">
-              <.input
-                field={@form[:include_hrdf]}
-                id="include-hrdf"
-                type="checkbox"
-                checked={@include_hrdf}
-              />
-              <label class="text-sm text-slate-600">Include HRDF levy (1% employer)</label>
+            <div class="code-muted">-H "Authorization: Bearer $KEY"</div>
+            <div class="code-muted">-d '&#123;&quot;wage&quot;: 5000&#125;'</div>
+            <div class="terminal-result">
+              <div><span class="code-muted">&#123;</span></div>
+              <div>
+                &nbsp; <span class="code-key">"net_pay"</span>: <span class="code-number">4305.35</span>,
+              </div>
+              <div>
+                &nbsp; <span class="code-key">"employee_contributions"</span>:
+                <span class="code-muted">&#123;</span>
+              </div>
+              <div>
+                &nbsp;&nbsp;&nbsp; <span class="code-key">"epf"</span>: <span class="code-number">550.00</span>,
+              </div>
+              <div>
+                &nbsp;&nbsp;&nbsp; <span class="code-key">"socso"</span>: <span class="code-number">24.75</span>,
+              </div>
+              <div>
+                &nbsp;&nbsp;&nbsp; <span class="code-key">"pcb"</span>:
+                <span class="code-number">110.00</span>
+              </div>
+              <div>&nbsp; <span class="code-muted">&#125;</span></div>
+              <div><span class="code-muted">&#125;</span></div>
             </div>
-
-            <%= if @error do %>
-              <div class="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                {@error}
-              </div>
-            <% end %>
-          </.form>
-
-          <%= if @result do %>
-            <div class="mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <div class="flex justify-between items-center border-b border-slate-200 pb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Breakdown</h2>
-                <span class="text-xs bg-emerald-50 text-emerald-700 font-medium px-2.5 py-1 rounded-full">rates v{@result.rates_version}</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-4 py-4">
-                <div>
-                  <p class="text-xs text-slate-500">Gross wage</p>
-                  <p class="text-xl font-bold text-slate-900">RM {fmt(@result.wage)}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-slate-500">Employee total</p>
-                  <p class="text-xl font-bold text-rose-600">
-                    -RM {fmt(@result.employee_contributions.total)}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-slate-500">Net pay</p>
-                  <p class="text-xl font-bold text-emerald-600">RM {fmt(@result.net_pay)}</p>
-                </div>
-              </div>
-
-              <div class="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-700 mb-2">Employee contributions</h3>
-                  <table class="w-full text-sm">
-                    <tbody>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">EPF (11%)</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employee_contributions.epf)}
-                        </td>
-                      </tr>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">SOCSO (0.5%)</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employee_contributions.socso)}
-                        </td>
-                      </tr>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">EIS (0.2%)</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employee_contributions.eis)}
-                        </td>
-                      </tr>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">PCB (income tax)</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employee_contributions.pcb)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="py-2 text-slate-600">HRDF</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employee_contributions.hrdf)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-700 mb-2">Employer contributions</h3>
-                  <table class="w-full text-sm">
-                    <tbody>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">EPF</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employer_contributions.epf)}
-                        </td>
-                      </tr>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">SOCSO</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employer_contributions.socso)}
-                        </td>
-                      </tr>
-                      <tr class="border-b border-slate-100">
-                        <td class="py-2 text-slate-600">EIS</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employer_contributions.eis)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="py-2 text-slate-600">HRDF</td><td class="py-2 text-right font-medium">
-                          RM {fmt(@result.employer_contributions.hrdf)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div class="mt-3 pt-3 border-t border-slate-200 flex justify-between text-sm font-semibold">
-                    <span class="text-slate-700">Total employer cost</span>
-                    <span class="text-emerald-700">RM {fmt(@result.total_statutory_cost)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-6 pt-4 border-t border-slate-200">
-                <h3 class="text-sm font-semibold text-slate-700 mb-2">PCB tax details (annual)</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div class="bg-slate-50 rounded-lg p-3">
-                    <p class="text-xs text-slate-500">Annual gross</p>
-                    <p class="font-semibold text-slate-800">
-                      RM {fmt(@result.tax_details.annual_gross)}
-                    </p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-3">
-                    <p class="text-xs text-slate-500">Reliefs</p>
-                    <p class="font-semibold text-slate-800">
-                      -RM {fmt(@result.tax_details.annual_reliefs)}
-                    </p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-3">
-                    <p class="text-xs text-slate-500">Chargeable</p>
-                    <p class="font-semibold text-slate-800">
-                      RM {fmt(@result.tax_details.annual_chargeable)}
-                    </p>
-                  </div>
-                  <div class="bg-slate-50 rounded-lg p-3">
-                    <p class="text-xs text-slate-500">Annual tax</p>
-                    <p class="font-semibold text-emerald-700">
-                      RM {fmt(@result.tax_details.annual_tax)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          <% end %>
-
-          <div class="mt-8 text-center">
-            <a href="/api-docs" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium">View API docs →</a>
           </div>
         </div>
       </div>
-    </Layouts.app>
+    </section>
+
+    <section id="coverage" class="section section-paper-deep">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="eyebrow"><span class="eyebrow-dot"></span> One endpoint, clear output</div>
+          <h2>Every deduction has a place.</h2>
+          <p>
+            See employee deductions and employer cost together, with rate versioning attached to every calculation.
+          </p>
+        </div>
+        <div class="coverage-grid">
+          <div class="coverage-card">
+            <strong>EPF</strong><p>Employee and employer contribution paths.</p><small>KWSP</small>
+          </div>
+          <div class="coverage-card">
+            <strong>SOCSO</strong><p>Category 1 and Category 2 bracket tables.</p><small>PERKESO</small>
+          </div>
+          <div class="coverage-card">
+            <strong>EIS</strong><p>Employment insurance contribution bands.</p><small>SIP</small>
+          </div>
+          <div class="coverage-card">
+            <strong>HRDF</strong><p>Standard, reduced, and exempt modes.</p><small>HRD Corp</small>
+          </div>
+          <div class="coverage-card">
+            <strong>PCB</strong><p>YA snapshot with transparent Method 1 limits.</p><small>LHDN · limited</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="developer" class="section section-dark">
+      <div class="shell developer-grid">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Built for the next integration</div>
+          <h2>Less payroll plumbing. More product.</h2>
+          <p>
+            Bring statutory calculations into HRIS, fintech, accounting, and payroll products through one predictable JSON API.
+          </p>
+          <div class="developer-links">
+            <.link navigate={~p"/api-docs"} class="button button-mint button-small">Explore endpoints ↗</.link><a
+              href="/#coverage"
+              class="button button-small button-outline-dark"
+            >See coverage</a>
+          </div>
+        </div>
+        <div class="code-window">
+          <div class="terminal-bar">
+            <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">response.json</span>
+          </div><div class="code-preview-lines">
+            <div>success: true</div><div>net_pay: 4305.35</div><div>rates_version: 2026.2</div><div>
+              employee_contributions: ...
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="shell footer-inner">
+        <span>Malaysia Payroll API · statutory tooling in progress</span><div class="footer-links">
+          <.link navigate={~p"/api-docs"}>API docs</.link><a href="https://github.com/Sienz16/Malaysia-Payroll">GitHub</a>
+        </div>
+      </div>
+    </footer>
     """
   end
-
-  defp fmt(v) when is_number(v), do: :erlang.float_to_binary(v / 1, decimals: 2)
-  defp fmt(v), do: to_string(v)
 end

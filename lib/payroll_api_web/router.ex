@@ -56,6 +56,7 @@ defmodule PayrollApiWeb.Router do
     pipe_through :browser
 
     live "/", PayrollLive
+    live "/calculator", CalculatorLive
     get "/api-docs", PageController, :docs
   end
 end

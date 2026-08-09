@@ -25,6 +25,26 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/payroll_api"
 import topbar from "../vendor/topbar"
 
+const themeToggle = document.getElementById("theme-toggle")
+const setTheme = theme => document.documentElement.setAttribute("data-theme", theme)
+const updateThemeToggle = theme => {
+  if (!themeToggle) return
+  const dark = theme === "dark"
+  themeToggle.setAttribute("aria-pressed", String(dark))
+  themeToggle.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme")
+}
+const savedTheme = localStorage.getItem("payroll-theme")
+if (savedTheme) {
+  setTheme(savedTheme)
+  updateThemeToggle(savedTheme)
+}
+themeToggle?.addEventListener("click", () => {
+  const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"
+  localStorage.setItem("payroll-theme", theme)
+  setTheme(theme)
+  updateThemeToggle(theme)
+})
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
@@ -80,4 +100,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-

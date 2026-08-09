@@ -35,37 +35,36 @@ defmodule PayrollApiWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
+    <nav id="site-navigation" class="site-nav">
+      <div class="shell nav-inner">
+        <.link navigate={~p"/"} class="brand-mark" aria-label="Malaysia Payroll API home">
+          <span class="brand-glyph" aria-hidden="true">M</span>
+          <span>malaysia<span class="brand-accent">/</span>payroll</span>
+        </.link>
+        <div class="nav-links">
+          <.link navigate={~p"/#coverage"} class="nav-link">Coverage</.link>
+          <.link navigate={~p"/#developer"} class="nav-link">For developers</.link>
+          <.link navigate={~p"/calculator"} class="nav-link">Playground</.link>
+          <.link navigate={~p"/api-docs"} class="nav-link">API docs</.link>
+        </div>
+        <div class="nav-actions">
+          <button
+            id="theme-toggle"
+            type="button"
+            class="theme-button"
+            aria-label="Switch to dark theme"
+            aria-pressed="false"
+          >
+            <.icon name="hero-sun" class="h-4 w-4" />
+          </button>
+          <.link navigate={~p"/calculator"} class="button button-small button-dark">Try playground
+          <span aria-hidden="true">↗</span></.link>
+        </div>
       </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://phoenix.hexdocs.pm/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
+    </nav>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
-      </div>
+    <main id="main-content">
+      {render_slot(@inner_block)}
     </main>
 
     <.flash_group flash={@flash} />

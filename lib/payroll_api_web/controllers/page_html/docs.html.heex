@@ -1,97 +1,133 @@
-<div class="min-h-screen bg-slate-50 py-10 px-4">
-  <div class="max-w-4xl mx-auto">
-    <div class="text-center mb-8">
-      <p class="text-sm font-semibold text-emerald-600 uppercase tracking-wide">
-        Malaysia Statutory Payroll API
-      </p>
-      <h1 class="text-3xl font-bold text-slate-900 mt-1">API Documentation</h1>
-      <p class="text-slate-500 mt-2">Authenticated API — use a Bearer API key</p>
-    </div>
-
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-      <div class="px-6 py-4 bg-slate-900">
-        <code class="text-sm text-slate-100">GET /api/v1/rates</code>
+<Layouts.app flash={@flash}>
+  <section class="section docs-page">
+    <div class="shell">
+      <div class="docs-hero">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Developer reference</div>
+          <h1>Build payroll<br /><em>into your product.</em></h1>
+          <p>
+            Authenticated endpoints for Malaysia statutory rates, payslip calculations, bulk runs, and PDF output.
+          </p>
+        </div>
+        <div class="docs-hero-actions">
+          <.link navigate={~p"/calculator"} class="button button-mint button-small">Open playground ↗</.link>
+          <a href={~p"/api/v1/openapi.yaml"} class="button button-ghost button-small">Open OpenAPI</a>
+        </div>
       </div>
-      <div class="p-6 text-sm">
-        <p class="text-slate-600 mb-3">
-          Fetch current statutory rates (EPF, SOCSO, EIS, HRDF, minimum wage) for a given year.
-        </p>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-slate-500 border-b border-slate-200">
-              <th class="py-2">Param</th><th class="py-2">Type</th><th class="py-2">Default</th><th class="py-2">
-                Description
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="border-b border-slate-100">
-              <td class="py-2 font-mono">year</td><td class="py-2">int</td><td class="py-2">
-                2026
-              </td><td class="py-2 text-slate-600">Rate year</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="mt-4 bg-slate-50 rounded-lg p-4">
-          <p class="text-xs text-slate-500 mb-1">Example</p>
-          <code class="text-xs text-slate-800">curl -H "Authorization: Bearer $PAYROLL_API_KEY" https://payroll-api.example.com/api/v1/rates?year=2026</code>
+
+      <div class="docs-notice">
+        <.icon name="hero-key" class="h-4 w-4" /><span>Rates and calculation endpoints require <code>Authorization: Bearer $PAYROLL_API_KEY</code>. Health and OpenAPI remain public.</span>
+      </div>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar">
+          <p>ON THIS PAGE</p>
+          <a href="#quickstart">Quickstart</a>
+          <a href="#rates">GET /rates</a>
+          <a href="#payslip">POST /calculate-payslip</a>
+          <a href="#other-endpoints">Other endpoints</a>
+          <a href="#limits">Known limits</a>
+        </aside>
+        <div class="docs-content">
+          <section id="quickstart" class="docs-section">
+            <div class="docs-section-label">01 / QUICKSTART</div>
+            <h2>One request. One breakdown.</h2>
+            <p>
+              Send gross monthly wage in RM. Response returns employee deductions, employer cost, estimated net pay, tax details, and the applied rate version.
+            </p>
+            <div class="docs-code">
+              <div class="terminal-bar">
+                <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">request.sh</span>
+              </div><pre phx-no-curly-interpolation>curl -X POST https://payroll-api.example.com/api/v1/calculate-payslip \
+  -H "Authorization: Bearer $PAYROLL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"wage": 5000}'</pre>
+            </div>
+          </section>
+
+          <section id="rates" class="docs-section">
+            <div class="docs-section-label">02 / RATE SNAPSHOT</div>
+            <h2><span class="method method-get">GET</span> /api/v1/rates</h2>
+            <p>
+              Fetch supported year snapshots and source metadata. Supported years currently include 2025 and 2026.
+            </p>
+            <div class="docs-row">
+              <code>year</code><span>integer · optional</span><b>2026</b>
+            </div>
+            <div class="docs-code">
+              <div class="terminal-bar">
+                <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">response.json</span>
+              </div><pre phx-no-curly-interpolation>{
+  "success": true,
+  "data": { "year": 2026, "epf": { ... } },
+  "supported_years": [2025, 2026]
+}</pre>
+            </div>
+          </section>
+
+          <section id="payslip" class="docs-section">
+            <div class="docs-section-label">03 / CALCULATION</div>
+            <h2><span class="method method-post">POST</span> /api/v1/calculate-payslip</h2>
+            <p>
+              Calculate a single monthly payslip breakdown. Use explicit eligibility fields where applicable; marital status alone does not grant spouse relief.
+            </p>
+            <div class="docs-fields">
+              <div class="docs-row">
+                <code>wage</code><span>number · required</span><b>5000</b>
+              </div>
+              <div class="docs-row">
+                <code>include_hrdf</code><span>boolean · optional</span><b>true</b>
+              </div>
+              <div class="docs-row">
+                <code>spouse_eligible</code><span>boolean · optional</span><b>false</b>
+              </div>
+              <div class="docs-row">
+                <code>children</code><span>non-negative integer</span><b>0</b>
+              </div>
+              <div class="docs-row">
+                <code>citizenship</code><span>malaysian | non_malaysian</span><b>malaysian</b>
+              </div>
+              <div class="docs-row">
+                <code>age_60_plus</code><span>boolean · optional</span><b>false</b>
+              </div>
+            </div>
+          </section>
+
+          <section id="other-endpoints" class="docs-section">
+            <div class="docs-section-label">04 / MORE SURFACES</div>
+            <div class="endpoint-list">
+              <div>
+                <span class="method method-post">POST</span><code>/api/v1/calculate-payslip/bulk</code><p>
+                  Calculate multiple employee rows with per-row results.
+                </p>
+              </div>
+              <div>
+                <span class="method method-get">GET</span><code>/api/v1/payslip.pdf</code><p>
+                  Download a parser-valid sample payslip PDF.
+                </p>
+              </div>
+              <div>
+                <span class="method method-get">GET</span><code>/api/v1/health</code><p>
+                  Public liveness endpoint.
+                </p>
+              </div>
+              <div>
+                <span class="method method-get">GET</span><code>/api/v1/openapi.yaml</code><p>
+                  Machine-readable contract.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section id="limits" class="docs-section docs-limits">
+            <div class="docs-section-label">05 / READ THIS FIRST</div>
+            <h2>Transparent by design.</h2>
+            <p>
+              Current engine is a working prototype. EPF wage-range schedules below RM20,000.01 and full LHDN MTD workflows are still under official validation. PCB currently covers simplified Method 1 only. Do not use outputs for real payroll filing.
+            </p>
+          </section>
         </div>
       </div>
     </div>
-
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-      <div class="px-6 py-4 bg-slate-900">
-        <code class="text-sm text-slate-100">POST /api/v1/calculate-payslip</code>
-      </div>
-      <div class="p-6 text-sm">
-        <p class="text-slate-600 mb-3">
-          Compute full statutory breakdown (EPF + SOCSO + EIS + HRDF) for a gross monthly wage.
-        </p>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-slate-500 border-b border-slate-200">
-              <th class="py-2">Field</th><th class="py-2">Type</th><th class="py-2">Required</th><th class="py-2">
-                Description
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="border-b border-slate-100">
-              <td class="py-2 font-mono">wage</td><td class="py-2">number</td><td class="py-2 text-emerald-600 font-medium">
-                yes
-              </td><td class="py-2 text-slate-600">Gross monthly wage (RM)</td>
-            </tr>
-            <tr class="border-b border-slate-100">
-              <td class="py-2 font-mono">include_hrdf</td><td class="py-2">bool</td><td class="py-2">
-                no
-              </td><td class="py-2 text-slate-600">Include HRDF levy (default true)</td>
-            </tr>
-            <tr class="border-b border-slate-100">
-              <td class="py-2 font-mono">married</td><td class="py-2">bool</td><td class="py-2">
-                no
-              </td><td class="py-2 text-slate-600">Spouse tax relief (default false)</td>
-            </tr>
-            <tr class="border-b border-slate-100">
-              <td class="py-2 font-mono">children</td><td class="py-2">int</td><td class="py-2">
-                no
-              </td><td class="py-2 text-slate-600">Children under 18 (default 0)</td>
-            </tr>
-            <tr>
-              <td class="py-2 font-mono">year</td><td class="py-2">int</td><td class="py-2">
-                no
-              </td><td class="py-2 text-slate-600">Rate year (default 2026)</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="mt-4 bg-slate-50 rounded-lg p-4">
-          <p class="text-xs text-slate-500 mb-1">Example</p>
-          <pre class="text-xs text-slate-800 whitespace-pre-wrap"><%= "curl -X POST https://payroll-api.example.com/api/v1/calculate-payslip \\" %><%= "\n  -H \"Authorization: Bearer $PAYROLL_API_KEY\" \\" %><%= "\n  -H \"Content-Type: application/json\" \\" %><%= "\n  -d '{\"wage\": 5000}'" %></pre>
-        </div>
-      </div>
-    </div>
-
-    <div class="text-center">
-      <a href="/" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium">← Back to calculator</a>
-    </div>
-  </div>
-</div>
+  </section>
+</Layouts.app>

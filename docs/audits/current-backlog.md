@@ -1,6 +1,6 @@
 # Current Audit Backlog
 
-Last broad audit: 2026-08-08
+Last broad audit: 2026-08-09
 Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-initial-project-audit.md)
 
 ## Rules
@@ -34,8 +34,9 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 |---|---|---|---|---|---|
 | API-003 | Medium | open | Numeric parsers accept trailing garbage and silently substitute defaults. | Require complete parse; return structured validation errors. | Tests for `5000abc`, `2026junk`, negative/fractional children |
 | PAY-007 | High | open | Zero wage receives SOCSO/EIS deductions and negative net pay. | Define valid zero-wage behavior from official rules and reject impossible payroll outcomes. | Zero and lower-bound tests |
-| UI-001 | Medium | fixed | LiveView now defaults omitted HRDF checkbox to false. | Shared form normalization handles omitted checkbox as false without crashing. | Code path fixed; LiveView interaction test pending |
-| UI-002 | Medium | in_progress | LiveView now uses `<Layouts.app>`, `to_form/2`, `<.form>`, `<.input>`, and key IDs; interaction/accessibility tests remain absent. | Use Phoenix 1.8 form/layout conventions with tested IDs. | `mix test` passes; LiveView interaction tests pending |
+| UI-001 | Medium | fixed | LiveView defaults omitted HRDF checkbox to false. | Shared form normalization handles omitted checkbox as false without crashing. | Code path fixed; LiveView interaction test pending |
+| UI-002 | Medium | in_progress | LiveView uses `<Layouts.app>`, `to_form/2`, `<.form>`, `<.input>`, and key IDs; interaction/accessibility tests remain absent. | Use Phoenix 1.8 form/layout conventions with tested IDs. | `mix test` passes; LiveView interaction tests pending |
+| UI-003 | High | in_progress | Landing page, separate `/calculator` playground, navigation, and redesigned `/api-docs` now exist; responsive/accessibility interaction coverage and screenshot review remain. | Build responsive landing page, API playground, trust/source messaging, clear docs CTA, and modern visual system without adding a UI framework. | `mix test`/`mix precommit` pass; browser/mobile review and LiveView interaction tests pending |
 | ARCH-001 | Medium | open | Web layer calls internal calculators, PDF, keys, and raw ETS directly. | Use existing `PayrollApi` module as thin public context; keep storage internals private. | Compile plus focused context/controller tests |
 | ARCH-002 | Medium | open | Parsing and error mapping differ across API, bulk, PDF, and LiveView. | One input normalization policy and stable public error mapper. | Same invalid input yields consistent outcomes on each boundary |
 | DOC-001 | Medium | in_progress | README/OpenAPI now expose spouse eligibility and EPF/PCB limitations; routes, bulk/PDF schemas, and version drift remain. | Make OpenAPI canonical; align routes, auth, schemas, examples, and versions. | Focused schema updates; full contract test pending |
@@ -69,7 +70,7 @@ None yet.
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-09 | `mix test` | 46 tests passed |
+| 2026-08-09 | `mix test` | 52 tests passed |
 | 2026-08-09 | `mix precommit` | Passed |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
@@ -96,8 +97,19 @@ Pending: DaisyUI dependency removal blocked by file encoding issues.
 - Bulk calculation returns row errors for non-map employees; negative children reject.
 - HRDF mode selection supports `standard_1pct`, `reduced_0_5pct`, and `exempt`; official eligibility and wage-base rules remain open.
 - Integer-sen helper now drives EPF/HRDF percentage calculations; PCB and full aggregation still need migration.
-- `mix test` and `mix precommit` pass with 46 tests.
+- `mix test` and `mix precommit` pass with 52 tests.
 
 Remaining release blockers: official KWSP Third Schedule implementation, official LHDN MTD scope, durable tenant-aware credentials/data, full integer-sen and scheme-specific rounding, automated PDF parser test, bulk limits, LiveView interaction tests, and deployment/operations controls.
 
 PCB remediation: selected rate snapshots now carry PCB brackets/reliefs/rebates; `spouse_eligible` controls spouse relief instead of `married`; negative children reject. YTD remuneration, previous PCB, remaining months, zakat, CP38, residency, and additional-remuneration Method 2 remain open.
+
+Product completion baseline (2026-08-09):
+
+- Basic calculation demo: **75%**
+- Narrow stateless statutory API: **55%**
+- Production-ready statutory payroll API: **48%**
+- Complete employer payroll system: **below 25%**
+- Working prototype: **yes**
+- Safe for real payroll: **no**
+
+Next major phase: UI-first product modernization. Scope and research brief live in [`ui-modernization-brief.md`](ui-modernization-brief.md).
