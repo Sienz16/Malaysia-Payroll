@@ -114,7 +114,7 @@ defmodule PayrollApi.Statutory.Payslip do
     pcb =
       Pcb.monthly(%{
         wage: wage,
-        married: Map.get(opts, :married, false),
+        spouse_eligible: Map.get(opts, :spouse_eligible, false),
         children: Map.get(opts, :children, 0),
         epf_monthly: epf.employee,
         rates: rates

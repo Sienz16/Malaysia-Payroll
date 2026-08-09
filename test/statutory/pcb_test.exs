@@ -54,7 +54,7 @@ defmodule PayrollApi.Statutory.PcbTest do
 
     test "married with 2 children reduces tax" do
       single = Pcb.monthly(%{wage: 5000})
-      married = Pcb.monthly(%{wage: 5000, married: true, children: 2})
+      married = Pcb.monthly(%{wage: 5000, spouse_eligible: true, children: 2})
       assert married.monthly_pcb < single.monthly_pcb
       assert married.annual_reliefs == 13_000.0 + 4_000.0 + 2 * 2_000.0
     end
@@ -69,10 +69,31 @@ defmodule PayrollApi.Statutory.PcbTest do
 
     test "spouse rebate: married low income gets double rebate" do
       single = Pcb.monthly(%{wage: 2500})
-      married = Pcb.monthly(%{wage: 2500, married: true})
+      married = Pcb.monthly(%{wage: 2500, spouse_eligible: true})
       # both end at 0 tax due to rebates, but married claims spouse rebate
       assert married.monthly_pcb == 0.0
       assert married.annual_reliefs == single.annual_reliefs + 4_000.0
+    end
+
+    test "married status alone does not grant spouse relief" do
+      married = Pcb.monthly(%{wage: 5000, married: true})
+      single = Pcb.monthly(%{wage: 5000})
+
+      assert married.annual_reliefs == single.annual_reliefs
+      assert married.monthly_pcb == single.monthly_pcb
+    end
+
+    test "invalid children rejected" do
+      assert {:error, :invalid_children} = Pcb.monthly(%{wage: 5000, children: -1})
+    end
+
+    test "uses PCB values from selected rate snapshot" do
+      rates = PayrollApi.Statutory.Rates.rates(2025)
+      custom = put_in(rates, [:pcb, :rebate_amount], 0)
+
+      result = Pcb.monthly(%{wage: 5000, rates: custom})
+
+      assert result.annual_tax == 1_320.0
     end
   end
 end

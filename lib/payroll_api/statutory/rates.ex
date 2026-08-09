@@ -264,6 +264,12 @@ defmodule PayrollApi.Statutory.Rates do
         employer_rate: 0.01,
         applicable: true
       },
+      pcb: %{
+        brackets: PayrollApi.Statutory.Pcb.brackets(),
+        reliefs: PayrollApi.Statutory.Pcb.reliefs(),
+        rebate_threshold: PayrollApi.Statutory.Pcb.rebate_threshold(),
+        rebate_amount: PayrollApi.Statutory.Pcb.rebate_amount()
+      },
       minimum_wage: 1700,
       sources: %{
         epf:

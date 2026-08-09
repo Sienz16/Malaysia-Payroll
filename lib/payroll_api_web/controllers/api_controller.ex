@@ -32,6 +32,7 @@ defmodule PayrollApiWeb.ApiController do
              age_60_plus: parse_bool(params["age_60_plus"], false),
              year: year,
              married: married,
+             spouse_eligible: parse_bool(params["spouse_eligible"], false),
              children: children
            }) do
         {:ok, result} -> render(conn, :payslip, %{result: result, lang: lang})

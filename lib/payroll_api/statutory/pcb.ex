@@ -19,7 +19,9 @@ defmodule PayrollApi.Statutory.Pcb do
   """
 
   @doc "YA 2025 resident income tax brackets: {lower_exclusive, rate_pct, cumulative_tax_at_lower}"
-  def brackets do
+  def brackets, do: brackets(nil)
+
+  def brackets(nil) do
     [
       {0, 0, 0},
       {5_000, 1, 0},
@@ -34,8 +36,12 @@ defmodule PayrollApi.Statutory.Pcb do
     ]
   end
 
+  def brackets(rates), do: Map.get(rates, :pcb, %{}) |> Map.get(:brackets, brackets())
+
   @doc "Statutory reliefs (annual, RM)."
-  def reliefs do
+  def reliefs, do: reliefs(nil)
+
+  def reliefs(nil) do
     %{
       individual: 9_000,
       # EPF/SOCSO contribution relief cap
@@ -50,9 +56,15 @@ defmodule PayrollApi.Statutory.Pcb do
     }
   end
 
+  def reliefs(rates), do: Map.get(rates, :pcb, %{}) |> Map.get(:reliefs, reliefs())
+
   @doc "Tax rebates (RM400 each) for chargeable income <= RM35,000."
-  def rebate_threshold, do: 35_000
-  def rebate_amount, do: 400
+  def rebate_threshold, do: rebate_threshold(nil)
+  def rebate_threshold(nil), do: 35_000
+  def rebate_threshold(rates), do: get_in(rates, [:pcb, :rebate_threshold]) || rebate_threshold()
+  def rebate_amount, do: rebate_amount(nil)
+  def rebate_amount(nil), do: 400
+  def rebate_amount(rates), do: get_in(rates, [:pcb, :rebate_amount]) || rebate_amount()
 
   @doc """
   Calculate annual tax for a chargeable income (after reliefs).
@@ -64,8 +76,10 @@ defmodule PayrollApi.Statutory.Pcb do
   def annual_tax(chargeable) when chargeable <= 0, do: {0.0, []}
 
   def annual_tax(chargeable, opts \\ %{}) do
+    rates = Map.get(opts, :rates)
+
     {tax, applied} =
-      brackets()
+      brackets(rates)
       |> Enum.reduce_while({0.0, []}, fn {lower, pct, cum}, {acc, list} ->
         # Only the bracket the income falls INTO contributes:
         # cum (tax on all lower brackets) + marginal slice above its lower bound.
@@ -78,9 +92,9 @@ defmodule PayrollApi.Statutory.Pcb do
 
     rebate =
       cond do
-        chargeable > rebate_threshold() -> 0
-        Map.get(opts, :spouse_relief, false) -> rebate_amount() * 2
-        true -> rebate_amount()
+        chargeable > rebate_threshold(rates) -> 0
+        Map.get(opts, :spouse_relief, false) -> rebate_amount(rates) * 2
+        true -> rebate_amount(rates)
       end
 
     {max(Float.round(tax - rebate, 2), 0.0), Enum.reverse(applied)}
@@ -91,27 +105,40 @@ defmodule PayrollApi.Statutory.Pcb do
 
   Profile options:
     * `:wage` — gross monthly wage (RM)
-    * `:married` — bool, spouse relief applies (default false)
+    * `:spouse_eligible` — bool, non-working spouse relief applies (default false)
     * `:children` — int, number of children under 18 (default 0)
     * `:epf_monthly` — monthly EPF paid (defaults to 11% of wage, capped)
   """
   def monthly(%{wage: wage} = opts) when is_number(wage) and wage >= 0 do
+    children = Map.get(opts, :children, 0)
+
+    if not is_integer(children) or children < 0 do
+      {:error, :invalid_children}
+    else
+      monthly_valid(opts, wage, children)
+    end
+  end
+
+  def monthly(_), do: {:error, :invalid_wage}
+
+  defp monthly_valid(opts, wage, children) do
     r = Map.get(opts, :rates, PayrollApi.Statutory.Rates.rates())
     epf_monthly = Map.get(opts, :epf_monthly, wage * r.epf.employee_rate)
+    spouse_eligible = Map.get(opts, :spouse_eligible, false)
 
     annual_gross = wage * 12
     epf_annual = min(epf_monthly * 12, reliefs().epf)
 
+    reliefs = reliefs(r)
+
     relief_total =
-      reliefs().individual +
-        epf_annual +
-        if(Map.get(opts, :married, false), do: reliefs().spouse, else: 0) +
-        Map.get(opts, :children, 0) * reliefs().child
+      reliefs.individual + epf_annual +
+        if(spouse_eligible, do: reliefs.spouse, else: 0) + children * reliefs.child
 
     chargeable = max(annual_gross - relief_total, 0)
 
     {annual_tax_value, _} =
-      annual_tax(chargeable, %{spouse_relief: Map.get(opts, :married, false)})
+      annual_tax(chargeable, %{spouse_relief: spouse_eligible, rates: r})
 
     %{
       annual_gross: round2(annual_gross),
@@ -121,8 +148,6 @@ defmodule PayrollApi.Statutory.Pcb do
       monthly_pcb: round2(annual_tax_value / 12)
     }
   end
-
-  def monthly(_), do: {:error, :invalid_wage}
 
   defp round2(v) when is_integer(v), do: v * 1.0
   defp round2(v) when is_float(v), do: Float.round(v, 2)

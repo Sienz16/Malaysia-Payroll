@@ -114,6 +114,11 @@ paths:
                 married:
                   type: boolean
                   default: false
+                  description: Marital status only; does not grant spouse relief
+                spouse_eligible:
+                  type: boolean
+                  default: false
+                  description: Non-working spouse qualifies for statutory relief
                 children:
                   type: integer
                   default: 0

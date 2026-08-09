@@ -110,10 +110,10 @@ use in production payroll.**
 
 | Data | Source | Status |
 |---|---|---|
-| **EPF/KWSP rates** (11% emp / 12–13% employer) | [KWSP](https://www.kwsp.gov.my) circulars; cross-checked vs [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `epf.json` | ✅ Verified 2026-08-07 |
+| **EPF/KWSP rates** | [KWSP](https://www.kwsp.gov.my) Third Schedule effective October 2025 | ⚠️ Wage-range schedule import pending; not production-ready |
 | **SOCSO/PERKESO brackets** (Oct 2024 revision, RM6,000 ceiling, Cat 1 & 2) | [PERKESO rate of contribution](https://www.perkeso.gov.my/en/rate-of-contribution.html); cross-checked vs [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `socso.json` | ✅ Verified 2026-08-07 |
 | **EIS/SIP brackets** (RM6,000 ceiling) | SIP Act 2017; cross-checked vs [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `eis.json` | ✅ Verified 2026-08-07 |
-| **PCB income tax** (YA 2025/2026 brackets, reliefs, rebates) | [LHDN tax rates](https://www.hasil.gov.my/en/individual/individual-life-cycle/income-declaration/tax-rate/); cross-checked vs [L&Co Personal Tax Rate 2026](https://landco.my/taxation-en/personal-tax-rate/) and [Payroll-Calculator-2026](https://github.com/yeerock/Malaysia-Payroll-Calculator-2026---PCB-EPF-SOCSO-EIS-Net-Salary-Calculator) `pcb.json` | ✅ Verified 2026-08-07 |
+| **PCB income tax** | [LHDN tax rates](https://www.hasil.gov.my/en/individual/individual-life-cycle/income-declaration/tax-rate/) | ⚠️ Simplified Method 1 only; full MTD validation pending |
 | **HRDF levy** (1% employer) | PSMB Act 2001 / HRD Corp | ⚠️ Standard rate, verify applicability |
 | **Minimum wage** (RM1,700) | Minimum Wages Order 2025 (gazetted) | ✅ Verified |
 
@@ -127,7 +127,7 @@ use in production payroll.**
 
 ### Data freshness
 
-Rates are stored as year-keyed data in `lib/payroll_api/statutory/rates.ex`.
+Rates and PCB values are stored as year-keyed data in `lib/payroll_api/statutory/rates.ex`.
 A new budget year = a data-only update; calculation code stays untouched.
 Each snapshot carries `verified: true/false` and `verified_at`.
 

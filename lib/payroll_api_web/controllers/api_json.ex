@@ -14,7 +14,7 @@ defmodule PayrollApiWeb.ApiJSON do
         rates: I18n.t(lang, :rates),
         minimum_wage: I18n.t(lang, :minimum_wage)
       },
-      data: rates,
+      data: Map.delete(rates, :pcb),
       sources: PayrollApi.Statutory.Rates.sources(rates.year),
       supported_years: PayrollApi.Statutory.Rates.supported_years()
     }
