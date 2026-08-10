@@ -45,8 +45,6 @@ paths:
     get:
       summary: Current statutory rate tables
       operationId: getRates
-      security:
-        - BearerAuth: []
       parameters:
         - name: year
           in: query
@@ -121,16 +119,12 @@ paths:
                     items: { type: integer }
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimited"
   /calculate-payslip:
     post:
       summary: Calculate statutory payslip breakdown (prototype scope)
       operationId: calculatePayslip
-      security:
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -218,16 +212,12 @@ paths:
                     additionalProperties: { type: string }
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimited"
   /calculate-payslip/bulk:
     post:
       summary: Calculate payslips for multiple employees (max 500)
       operationId: calculatePayslipBulk
-      security:
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -286,16 +276,12 @@ paths:
                               type: string
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimited"
   /payslip.pdf:
     get:
       summary: Download a parser-valid sample payslip PDF
       operationId: payslipPdf
-      security:
-        - BearerAuth: []
       parameters:
         - name: wage
           in: query
@@ -321,120 +307,12 @@ paths:
                 format: binary
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /keys:
-    get:
-      summary: List registered API keys (redacted, master key only)
-      operationId: listKeys
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Keys list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean }
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        key_prefix: { type: string }
-                        source: { type: string }
-                        created_at: { type: integer }
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-    post:
-      summary: Register a new API key (master key only)
-      operationId: createKey
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [key]
-              properties:
-                key: { type: string, minLength: 8 }
-      responses:
-        "200":
-          description: Key added
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /keys/{key}:
-    delete:
-      summary: Remove an API key (master key only; master key itself cannot be removed)
-      operationId: deleteKey
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: key
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Key removed (or error payload for master key / unknown key)
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          description: Key not found
-        "422":
-          description: Master key cannot be removed
         "429":
           $ref: "#/components/responses/RateLimited"
 components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
   responses:
     BadRequest:
       description: Invalid request
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: object
-                properties:
-                  message: { type: string }
-    Unauthorized:
-      description: Invalid or missing API key
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: object
-                properties:
-                  message: { type: string }
-    Forbidden:
-      description: Valid key but insufficient privilege (admin key required)
       content:
         application/json:
           schema:

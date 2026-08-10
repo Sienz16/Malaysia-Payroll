@@ -10,9 +10,6 @@ import Config
 config :payroll_api,
   generators: [timestamp_type: :utc_datetime]
 
-config :payroll_api,
-  ecto_repos: [PayrollApi.Repo]
-
 # Configure the endpoint
 config :payroll_api, PayrollApiWeb.Endpoint,
   url: [host: "localhost"],

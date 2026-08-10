@@ -1,17 +1,5 @@
 import Config
 
-config :payroll_api, PayrollApi.Repo,
-  username: System.get_env("POSTGRES_USER", System.get_env("USER")),
-  password: System.get_env("POSTGRES_PASSWORD"),
-  hostname: System.get_env("POSTGRES_HOST", "localhost"),
-  database: System.get_env("POSTGRES_TEST_DB", "payroll_api_test"),
-  pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: 10
-
-# Test API key (seeded by PayrollApi.Keys from env)
-config :payroll_api,
-  api_key: "test-master-key-123"
-
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :payroll_api, PayrollApiWeb.Endpoint,

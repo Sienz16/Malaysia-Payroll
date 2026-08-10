@@ -15,13 +15,8 @@ defmodule PayrollApiWeb.Router do
     plug :fetch_session
   end
 
-  pipeline :api_auth do
-    plug PayrollApiWeb.Plug.ApiKeyAuth
+  pipeline :api_rate_limit do
     plug PayrollApiWeb.Plug.RateLimit
-  end
-
-  pipeline :api_admin do
-    plug PayrollApiWeb.Plug.MasterKeyAuth
   end
 
   # Public endpoints — no auth.
@@ -32,23 +27,14 @@ defmodule PayrollApiWeb.Router do
     get "/openapi.yaml", ApiController, :openapi_spec
   end
 
-  # Authenticated API — Bearer key required.
+  # Public calculator API — rate limited by client IP.
   scope "/api/v1", PayrollApiWeb do
-    pipe_through [:api, :api_auth]
+    pipe_through [:api, :api_rate_limit]
 
     get "/rates", ApiController, :rates
     post "/calculate-payslip", ApiController, :calculate_payslip
     post "/calculate-payslip/bulk", ApiController, :calculate_payslip_bulk
     get "/payslip.pdf", ApiController, :payslip_pdf
-  end
-
-  # Key administration — restricted to the master API key.
-  scope "/api/v1", PayrollApiWeb do
-    pipe_through [:api, :api_auth, :api_admin]
-
-    get "/keys", KeyController, :index
-    post "/keys", KeyController, :create
-    delete "/keys/:key", KeyController, :delete
   end
 
   # Web UI (LiveView calculator).

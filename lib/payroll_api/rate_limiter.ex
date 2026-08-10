@@ -1,6 +1,6 @@
 defmodule PayrollApi.RateLimiter do
   @moduledoc """
-  In-memory sliding-window rate limiter keyed by API key.
+  In-memory sliding-window rate limiter keyed by client IP.
 
   Default: 1,000 requests / month per key (free tier). Window is a rolling
   30-day bucket; `PAYROLL_RATE_LIMIT` env overrides the count.

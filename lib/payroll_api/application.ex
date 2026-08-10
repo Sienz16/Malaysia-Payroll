@@ -10,9 +10,7 @@ defmodule PayrollApi.Application do
     children = [
       PayrollApiWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:payroll_api, :dns_cluster_query) || :ignore},
-      PayrollApi.Repo,
       {Phoenix.PubSub, name: PayrollApi.PubSub},
-      PayrollApi.Keys,
       PayrollApi.RateLimiter,
       # Start a worker by calling: PayrollApi.Worker.start_link(arg)
       # {PayrollApi.Worker, arg},

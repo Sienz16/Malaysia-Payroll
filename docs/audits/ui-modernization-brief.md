@@ -34,14 +34,14 @@ Turn current calculator-first UI into a credible API product landing experience 
 - Hero: clear API promise, one primary CTA, one secondary docs CTA, code snippet or response preview.
 - Proof strip: EPF, SOCSO, EIS, HRDF, PCB labels with “coverage” and “validation status” distinctions.
 - Interactive calculator card: wage, year, HRDF, citizenship/age profile fields currently supported; clear disclaimer for simplified PCB and EPF schedule limitations.
-- Developer section: request/response example, authentication explanation, bulk/PDF links.
+- Developer section: request/response example, public API rate-limit explanation, bulk/PDF links.
 - Trust section: source references, version/effective-date display, explicit limitations.
 - Final CTA: “Run your first calculation” and “Read API docs”.
 - Footer: source links, disclaimer, repository/product links.
 
 ### API docs `/api-docs`
 
-- Authenticated endpoint examples with `Authorization: Bearer` header.
+- Public endpoint examples with rate-limit guidance.
 - Endpoint cards for rates, single calculation, bulk calculation, PDF, health, and OpenAPI.
 - Request editor/playground only with non-sensitive sample values.
 - Response preview with JSON formatting and copy action.

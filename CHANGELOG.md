@@ -2,6 +2,12 @@
 
 All notable changes to the Malaysia Payroll API.
 
+## Unreleased
+
+### Changed
+- Calculator, bulk, rates, and PDF endpoints are public and rate-limited by client IP.
+- Removed API-key authentication and key-management endpoints; no user data is stored.
+
 ## [0.2.0] — 2026-08-07
 
 Prototype release. Not production payroll software.
@@ -35,7 +41,7 @@ Prototype release. Not production payroll software.
 
 - Official KWSP Third Schedule wage ranges and statutory rounding remain open.
 - Full LHDN MTD/PCB workflow and official known-answer validation remain open.
-- HRD Corp eligibility, durable tenant-aware credentials, payroll persistence, and deployment controls remain open.
+- HRD Corp eligibility, payroll persistence, and deployment controls remain open.
 
 [0.2.0]: https://github.com/Sienz16/Malaysia-Payroll/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Sienz16/Malaysia-Payroll/releases/tag/v0.1.0

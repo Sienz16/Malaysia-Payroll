@@ -16,15 +16,15 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 |---|---|---|---|---|---|
 | PAY-001 | Critical | in_progress | EPF percentage direction corrected, but KWSP Third Schedule schedules and statutory rounding remain absent. | Effective-dated KWSP Third Schedule data, employee categories, official rounding, and known-answer tests replace approximation. | Threshold tests pass; official KWSP validation still required |
 | PAY-002 | Critical | in_progress | PCB now uses selected year snapshot and explicit spouse eligibility, but remains simplified Method 1, not production Malaysian MTD. | Implement and validate required LHDN computerized MTD scope, or remove production PCB claims and expose limitation clearly. | PCB focused tests pass; official LHDN ordinary/additional remuneration examples pending |
-| SEC-001 | Critical | verified | Key-management routes now require a master key; route authorization is fully tested. Durable scoped credentials remain required for production. | Separate admin authorization is tested; durable scoped credentials remain required for production. | 401/403/200 route tests pass (key_controller_test.exs, 8 tests); `mix precommit` passes |
-| SEC-002 | Critical | in_progress | No tenant, owner, role, or authorization boundary exists. | Documented security limitation in `ApiKeyAuth` and `Keys` modules; full tenancy requires persistence layer. | Cross-tenant behavior pinned by tests (api_controller_test.exs); `mix precommit` passes |
-| DATA-001 | Critical | open | Employee persistence is claimed but no Repo, schema, migration, or durable payroll state exists. | Either remove claim or add constrained employer/employee/payroll persistence with tenant ownership and auditability. | Migration/schema tests, restart persistence test, `mix precommit` |
+| SEC-001 | Critical | verified | Removed API-key management because public stateless endpoints have no private data or tenant boundary to protect. | Keep administrative endpoints absent until accounts or tenant data exist. | Router/OpenAPI contract tests pass |
+| SEC-002 | Critical | verified | Removed key-based tenancy claim; API is intentionally public and stateless. | Add tenant authorization only with persisted tenant data. | Public endpoint regression tests pass |
+| DATA-001 | Critical | verified | Removed stale employee-persistence claim; no employee data is stored. | Add persistence only with a tenant ownership design. | README and changelog state stateless scope |
 | PAY-003 | High | verified | Unsupported years now reject at domain and API boundaries; selected rates snapshot reaches PCB. | Reject unsupported years and apply one selected snapshot consistently. | Domain/API malformed-year tests; `mix test` |
 | PAY-004 | High | in_progress | Integer-sen Money helpers now drive EPF, HRDF, PCB (annual tax + monthly), and payslip aggregation. Remaining: scheme-specific rounding edge cases and official boundary known-answer coverage. | Integer sen and scheme-specific rounding throughout all payroll calculations. | 105 tests + `mix precommit` pass; official boundary and Money unit coverage added (money_test.exs) |
 | PAY-005 | High | in_progress | HRDF supports declared 1%, 0.5%, and exempt modes, but employer eligibility, wage-base rules, and official category validation remain incomplete. | Model covered wage floor and categories from HRD Corp rules with known-answer tests. | HRDF mode tests pass; official HRD Corp validation pending |
 | PAY-006 | High | in_progress | Employee age, citizenship, and bulk-row statutory profiles now reach payslip orchestration: SOCSO Category 2 for 60+, zero EIS for 60+/non-Malaysian, flat EPF for non-Malaysian. Remaining: PR status and full category matrix from official rules. | Add validated employee statutory profile and route each scheme by eligibility. | Top-level and bulk profile tests pass; official category matrix pending |
 | API-001 | High | verified | Bulk calculation now shares wage normalization, returns per-row errors, and enforces a 500-employee maximum. | One shared validation boundary; per-row errors; explicit maximum batch size; no crashes on valid JSON shapes. | Malformed and maximum-size request tests pass (domain + HTTP); `mix precommit` passes |
-| SEC-003 | High | open | Keys are plaintext, ephemeral, unscoped, and inconsistent across nodes/restarts. | Store only durable hashes and metadata; support owner, scope, expiry, rotation, and audited revocation. | Restart, revocation, scope, and secret-leak tests |
+| SEC-003 | High | verified | Removed plaintext in-memory API keys; public stateless API does not use credentials. | Reintroduce only durable hashed keys with accounts or quotas. | No key modules/routes remain |
 | SEC-004 | High | in_progress | Rate limiter is a single-node atomic GenServer with rolling-window retry duration; restart still resets counters. | Use durable or explicitly single-node atomic counters matching documented quota semantics. | Concurrent quota, key isolation, and retry-window tests pass; restart behavior documented but not directly tested |
 | API-002 | High | in_progress | PDF content stream and xref are now parser-valid, but payslip identity, period, numbering, and real endpoint parser test remain absent. | Produce parser-valid PDF with extractable payslip text and required payroll identity fields. | `pdfinfo`/`pdftotext` manual check passes; automated parser test pending |
 
@@ -86,8 +86,8 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-09 | `mix test` | 107 tests passed |
-| 2026-08-09 | `mix precommit` | Passed (compile --warnings-as-errors, format, 107 tests) |
+| 2026-08-10 | `mix test` | 95 tests passed |
+| 2026-08-10 | `mix precommit` | Passed (compile --warnings-as-errors, format, 95 tests) |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
 
@@ -100,11 +100,11 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 - **SEC-004**: Rate limiter rewritten as single-node atomic GenServer (no ETS read/filter/write races); documented restart semantics.
 - **SEC-004**: Rate-limited responses now report actual rolling-window recovery seconds through `Retry-After`.
 - **SEC-001**: Full route authorization tests (401/403/200) for key admin endpoints.
-- **SEC-002**: Cross-tenant behavior pinned by tests; limitation already documented in `ApiKeyAuth` + `Keys` moduledocs.
+- **SEC-002**: Replaced key-based tenancy scope with explicit public, stateless API scope; tenant authorization deferred until data persistence exists.
 - **PAY-004**: PCB migrated to integer-sen (annual tax, monthly PCB with half-up rounding); payslip aggregation sums in sen; `Money` unit tests added.
 - **PAY-006**: SOCSO Category 2 (60+), EIS eligibility (zero for 60+/non-Malaysian), flat EPF for non-Malaysian reach the payslip.
 - **UI-002**: Calculator LiveView interaction tests (render, submit, error, omitted checkbox, zero wage) + landing/docs coverage.
-- **DOC-001**: OpenAPI canonical — bulk, PDF, openapi endpoints added; SOCSO/EIS bracket schema fixed (ceiling RM6,000); EPF direction corrected; `/keys/{key}` matches router; contract tests added.
+- **DOC-001**: OpenAPI canonical — bulk, PDF, and OpenAPI endpoints added; SOCSO/EIS bracket schema fixed (ceiling RM6,000); EPF direction corrected; contract tests added.
 - **DOC-001**: Bulk employee profile fields, PDF `include_hrdf`, and key deletion `404`/`422` responses aligned with OpenAPI.
 - **ARCH-004**: Stale digested OpenAPI artifact removed.
 - **TEST-002**: +52 tests across key auth, rate limiter, LiveView, Money, OpenAPI contract, malformed input, zero-wage, and bulk statutory profiles.

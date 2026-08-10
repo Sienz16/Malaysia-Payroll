@@ -30,23 +30,19 @@ defmodule PayrollApiWeb.OpenApiContractTest do
           "/rates",
           "/calculate-payslip",
           "/calculate-payslip/bulk",
-          "/payslip.pdf",
-          "/keys",
-          "/keys/{key}"
+          "/payslip.pdf"
         ] do
       assert content =~ path, "missing spec path #{path}"
     end
   end
 
-  test "auth and rate limit responses are documented" do
+  test "rate limit response is documented without authentication" do
     content = spec_content()
-    assert content =~ "BearerAuth"
-    assert content =~ "type: http"
-    assert content =~ "scheme: bearer"
     assert content =~ "RateLimited"
     assert content =~ "Retry-After"
-    assert content =~ "Unauthorized"
-    assert content =~ "Forbidden"
+    refute content =~ "BearerAuth"
+    refute content =~ "Unauthorized"
+    refute content =~ "Forbidden"
   end
 
   test "SOCSO/EIS schema documents the current bracket table shape" do

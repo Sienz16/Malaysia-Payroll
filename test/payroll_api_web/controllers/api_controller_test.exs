@@ -7,39 +7,13 @@ defmodule PayrollApiWeb.ApiControllerTest do
     put_req_header(conn, "authorization", "Bearer #{@test_key}")
   end
 
-  test "GET /api/v1/rates requires auth", %{conn: conn} do
+  test "GET /api/v1/rates is public", %{conn: conn} do
     conn = get(conn, ~p"/api/v1/rates")
-    assert json_response(conn, 401)["error"]["message"] =~ "API key"
+    assert json_response(conn, 200)["success"] == true
   end
 
-  test "no tenant boundary: every valid key sees identical data (documented SEC-002)", %{
-    conn: conn
-  } do
-    # There is no employer tenancy today: any valid key can read any data.
-    # These tests pin the current behavior so introducing a tenant boundary
-    # requires deliberately changing them. See docs/audits/current-backlog.md
-    # SEC-002 for the documented limitation.
-    PayrollApi.Keys.add("tenant-a-key-000")
-    PayrollApi.Keys.add("tenant-b-key-111")
-
-    key_a = put_req_header(conn, "authorization", "Bearer tenant-a-key-000")
-    key_b = put_req_header(conn, "authorization", "Bearer tenant-b-key-111")
-
-    a = get(key_a, ~p"/api/v1/rates?year=2026") |> json_response(200)
-    b = get(key_b, ~p"/api/v1/rates?year=2026") |> json_response(200)
-
-    assert a["data"] == b["data"]
-  end
-
-  test "plain key cannot administer keys (admin boundary enforced)", %{conn: conn} do
-    PayrollApi.Keys.add("plain-key-999")
-    conn = put_req_header(conn, "authorization", "Bearer plain-key-999")
-    conn = get(conn, ~p"/api/v1/keys")
-    assert json_response(conn, 403)["error"]["message"] =~ "admin key"
-  end
-
-  test "GET /api/v1/rates with auth returns rate tables", %{conn: conn} do
-    conn = get(auth(conn), ~p"/api/v1/rates")
+  test "GET /api/v1/rates returns rate tables", %{conn: conn} do
+    conn = get(conn, ~p"/api/v1/rates")
     body = json_response(conn, 200)
     assert body["success"] == true
     assert body["data"]["epf"]["employee_rate"] == 0.11
@@ -64,7 +38,7 @@ defmodule PayrollApiWeb.ApiControllerTest do
   end
 
   test "POST /api/v1/calculate-payslip with wage", %{conn: conn} do
-    conn = post(auth(conn), ~p"/api/v1/calculate-payslip", %{"wage" => 5000})
+    conn = post(conn, ~p"/api/v1/calculate-payslip", %{"wage" => 5000})
 
     body = json_response(conn, 200)
     assert body["success"] == true

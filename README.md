@@ -16,21 +16,15 @@
 | `POST /api/v1/calculate-payslip/bulk` | Calculate up to 500 employee rows |
 | `GET /api/v1/payslip.pdf` | Download sample PDF output |
 | `GET /api/v1/openapi.yaml` | OpenAPI contract (public) |
-| `GET/POST/DELETE /api/v1/keys` | Master-key-only key administration |
 
 ## 🚀 Quickstart
 
 ```bash
-# 1. Get an API key (master key is in your env file)
-export PAYROLL_API_KEY="your-key"
+# 1. Fetch current rates
+curl https://payroll.dpnc.my/api/v1/rates
 
-# 2. Fetch current rates
-curl https://payroll.dpnc.my/api/v1/rates \
-  -H "Authorization: Bearer $PAYROLL_API_KEY"
-
-# 3. Calculate a payslip
+# 2. Calculate a payslip
 curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
-  -H "Authorization: Bearer $PAYROLL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"wage": 5000}'
 ```
@@ -77,7 +71,6 @@ curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
 | Code | Meaning |
 |---|---|
 | `400` | Bad request (missing/invalid `wage`) |
-| `401` | Missing/invalid API key |
 | `429` | Rate limit exceeded |
 
 ## 🛠 Local Development
@@ -86,13 +79,13 @@ curl -X POST https://payroll.dpnc.my/api/v1/calculate-payslip \
 # Elixir 1.18+ / OTP 25+ required
 mix deps.get
 mix phx.server          # http://localhost:4000
-mix test                # 105 tests
+mix test                # 95 tests
 mix precommit           # compile --warnings-as-errors + format + tests
 ```
 
 ## ⚠️ Production Limits
 
-EPF wage-range schedules below RM20,000.01, full LHDN MTD/PCB workflows, HRD Corp eligibility rules, durable credentials, tenant isolation, and payroll persistence are not complete. Do not use outputs for real payroll filing.
+EPF wage-range schedules below RM20,000.01, full LHDN MTD/PCB workflows, HRD Corp eligibility rules, and payroll persistence are not complete. Do not use outputs for real payroll filing.
 
 ## 📐 Architecture
 
@@ -102,13 +95,12 @@ lib/payroll_api/
     rates.ex      ← Year-keyed rate tables (DATA, with sources)
     payslip.ex    ← Orchestrates the calculation
     pcb.ex        ← LHDN MTD income tax (brackets, reliefs, rebate)
-  keys.ex         ← API key registry (env master + runtime keys)
-  rate_limiter.ex ← In-memory sliding-window rate limiting
+  rate_limiter.ex ← In-memory sliding-window IP rate limiting
 
 lib/payroll_api_web/
   controllers/    ← API + LiveView controllers
   live/           ← Payslip calculator UI
-  plugs/          ← ApiKeyAuth, RateLimit
+  plugs/          ← RateLimit
 ```
 
 Rates are **data, not code**: update `Rates.rates_by_year/0` for a new budget year — no calculation logic changes.

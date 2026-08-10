@@ -43,7 +43,6 @@ defmodule PayrollApiWeb.PayrollLive do
                 <span class="code-muted">$ </span><span class="code-key">curl</span>
                 -X POST /api/v1/calculate-payslip
               </div>
-              <div class="code-muted">-H "Authorization: Bearer $KEY"</div>
               <div class="code-muted">-d '&#123;&quot;wage&quot;: 5000&#125;'</div>
               <div class="terminal-result">
                 <div><span class="code-muted">&#123;</span></div>
