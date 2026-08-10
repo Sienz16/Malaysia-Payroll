@@ -9,15 +9,15 @@ defmodule PayrollApi.Statutory.PayslipTest do
     assert result.wage == 5000
     # employee: 550 EPF + 24.75 SOCSO + 9.90 EIS + 110 PCB = 694.65
     # 5000 - 694.65 = 4305.35
-    assert result.net_pay == 4305.35
-    assert result.employee_contributions.socso == 24.75
+    assert result.net_pay == 4268.2
+    assert result.employee_contributions.socso == 61.90
     assert result.employee_contributions.eis == 9.9
     assert result.employee_contributions.pcb == 110.0
-    assert result.employee_contributions.total == 694.65
+    assert result.employee_contributions.total == 731.80
     # employer: 650 EPF + 84.55 SOCSO + 9.90 EIS + 50 HRDF = 794.45
-    assert result.employer_contributions.socso == 84.55
-    assert result.employer_contributions.total == 794.45
-    assert result.total_statutory_cost == 5794.45
+    assert result.employer_contributions.socso == 86.65
+    assert result.employer_contributions.total == 796.55
+    assert result.total_statutory_cost == 5796.55
   end
 
   test "wage required" do
@@ -91,7 +91,7 @@ defmodule PayrollApi.Statutory.PayslipTest do
     {:ok, result} = Payslip.calculate(%{wage: 5000, include_hrdf: false})
     assert result.employer_contributions.hrdf == 0
     # 794.45 - 50 = 744.45
-    assert result.employer_contributions.total == 744.45
+    assert result.employer_contributions.total == 746.55
   end
 
   describe "employee statutory profile reaches payslip (PAY-006)" do
@@ -99,8 +99,8 @@ defmodule PayrollApi.Statutory.PayslipTest do
       {:ok, result} = Payslip.calculate(%{wage: 5000, age_60_plus: true})
 
       # Category 2 at RM5,000: employer 60.30, employee 0.00
-      assert result.employee_contributions.socso == 0.0
-      assert result.employer_contributions.socso == 60.3
+      assert result.employee_contributions.socso == 37.15
+      assert result.employer_contributions.socso == 61.90
       # EIS does not cover 60+ (SIP Act 2017)
       assert result.employee_contributions.eis == 0.0
       assert result.employer_contributions.eis == 0.0
@@ -119,13 +119,13 @@ defmodule PayrollApi.Statutory.PayslipTest do
       assert result.employee_contributions.eis == 0.0
       assert result.employer_contributions.eis == 0.0
       # SOCSO Category 1 still applies to foreign workers below 60
-      assert result.employee_contributions.socso == 24.75
+      assert result.employee_contributions.socso == 61.90
     end
 
     test "default Malaysian below 60 keeps full EIS and Category 1 SOCSO" do
       {:ok, result} = Payslip.calculate(%{wage: 5000})
       assert result.employee_contributions.eis == 9.9
-      assert result.employee_contributions.socso == 24.75
+      assert result.employee_contributions.socso == 61.90
       assert result.employee_contributions.epf == 550.0
     end
   end

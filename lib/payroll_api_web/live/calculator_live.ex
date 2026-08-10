@@ -20,7 +20,7 @@ defmodule PayrollApiWeb.CalculatorLive do
     include_hrdf = Map.get(params, "include_hrdf", "false") == "true"
 
     case Input.parse_wage(wage) do
-      {wage, ""} ->
+      {:ok, wage} ->
         case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf}) do
           {:ok, result} ->
             form = to_form(%{"wage" => wage, "include_hrdf" => to_string(include_hrdf)})

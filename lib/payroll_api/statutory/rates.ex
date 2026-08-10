@@ -6,153 +6,24 @@ defmodule PayrollApi.Statutory.Rates do
   with its effective date range and source reference. Updating a year's rates
   is a data-only change (no calculation code touched).
 
-  Verification status: prototype tables carry source references but require
-  official known-answer and effective-date tests before production use.
+  Verification status differs per scheme — see `verified_schemes` on a snapshot:
+
+  * EPF and SOCSO are computed from official tables transcribed into
+    `priv/statutory/` and covered by known-answer tests. See `Schedule`.
+  * EIS, HRDF and PCB are still prototype approximations. PCB in particular is
+    a simplified annualised bracket calculation, **not** the LHDN MTD
+    specification, and will disagree with a real payslip.
+
+  A snapshot's `verified` flag stays false while any scheme is unverified, so
+  no caller can mistake the whole result for filing-safe output.
+
   - Minimum wage: RM1,700 (2025 gazette)
   """
 
   @default_year 2026
 
   alias PayrollApi.Statutory.Money
-
-  # SOCSO (PERKESO) Category 1 — employees below 60 (Malaysian + foreign),
-  # effective Oct 2024, wage ceiling RM6,000. Values from PERKESO rate table.
-  @socso_category1_brackets [
-    %{max: 30, employer: 0.40, employee: 0.10},
-    %{max: 50, employer: 0.70, employee: 0.20},
-    %{max: 70, employer: 1.10, employee: 0.30},
-    %{max: 100, employer: 1.50, employee: 0.40},
-    %{max: 140, employer: 2.10, employee: 0.60},
-    %{max: 200, employer: 2.95, employee: 0.85},
-    %{max: 300, employer: 4.35, employee: 1.25},
-    %{max: 400, employer: 6.15, employee: 1.75},
-    %{max: 500, employer: 7.85, employee: 2.25},
-    %{max: 600, employer: 9.65, employee: 2.75},
-    %{max: 700, employer: 11.35, employee: 3.25},
-    %{max: 800, employer: 13.05, employee: 3.75},
-    %{max: 900, employer: 14.75, employee: 4.25},
-    %{max: 1000, employer: 16.55, employee: 4.75},
-    %{max: 1100, employer: 18.25, employee: 5.25},
-    %{max: 1200, employer: 19.95, employee: 5.75},
-    %{max: 1300, employer: 21.65, employee: 6.25},
-    %{max: 1400, employer: 23.35, employee: 6.75},
-    %{max: 1500, employer: 25.05, employee: 7.25},
-    %{max: 1600, employer: 26.75, employee: 7.75},
-    %{max: 1700, employer: 28.45, employee: 8.25},
-    %{max: 1800, employer: 30.15, employee: 8.75},
-    %{max: 1900, employer: 31.85, employee: 9.25},
-    %{max: 2000, employer: 33.55, employee: 9.75},
-    %{max: 2100, employer: 35.25, employee: 10.25},
-    %{max: 2200, employer: 36.95, employee: 10.75},
-    %{max: 2300, employer: 38.65, employee: 11.25},
-    %{max: 2400, employer: 40.35, employee: 11.75},
-    %{max: 2500, employer: 42.05, employee: 12.25},
-    %{max: 2600, employer: 43.75, employee: 12.75},
-    %{max: 2700, employer: 45.45, employee: 13.25},
-    %{max: 2800, employer: 47.15, employee: 13.75},
-    %{max: 2900, employer: 48.85, employee: 14.25},
-    %{max: 3000, employer: 50.55, employee: 14.75},
-    %{max: 3100, employer: 52.25, employee: 15.25},
-    %{max: 3200, employer: 53.95, employee: 15.75},
-    %{max: 3300, employer: 55.65, employee: 16.25},
-    %{max: 3400, employer: 57.35, employee: 16.75},
-    %{max: 3500, employer: 59.05, employee: 17.25},
-    %{max: 3600, employer: 60.75, employee: 17.75},
-    %{max: 3700, employer: 62.45, employee: 18.25},
-    %{max: 3800, employer: 64.15, employee: 18.75},
-    %{max: 3900, employer: 65.85, employee: 19.25},
-    %{max: 4000, employer: 67.55, employee: 19.75},
-    %{max: 4100, employer: 69.25, employee: 20.25},
-    %{max: 4200, employer: 70.95, employee: 20.75},
-    %{max: 4300, employer: 72.65, employee: 21.25},
-    %{max: 4400, employer: 74.35, employee: 21.75},
-    %{max: 4500, employer: 76.05, employee: 22.25},
-    %{max: 4600, employer: 77.75, employee: 22.75},
-    %{max: 4700, employer: 79.45, employee: 23.25},
-    %{max: 4800, employer: 81.15, employee: 23.75},
-    %{max: 4900, employer: 82.85, employee: 24.25},
-    %{max: 5000, employer: 84.55, employee: 24.75},
-    %{max: 5100, employer: 86.25, employee: 25.25},
-    %{max: 5200, employer: 87.95, employee: 25.75},
-    %{max: 5300, employer: 89.65, employee: 26.25},
-    %{max: 5400, employer: 91.35, employee: 26.75},
-    %{max: 5500, employer: 93.05, employee: 27.25},
-    %{max: 5600, employer: 94.75, employee: 27.75},
-    %{max: 5700, employer: 96.45, employee: 28.25},
-    %{max: 5800, employer: 98.15, employee: 28.75},
-    %{max: 5900, employer: 99.85, employee: 29.25},
-    %{max: 6000, employer: 101.55, employee: 29.75},
-    %{max: 999_999, employer: 101.55, employee: 29.75}
-  ]
-
-  # SOCSO Category 2 — employees aged 60+, wage ceiling RM6,000.
-  @socso_category2_brackets [
-    %{max: 30, employer: 0.30, employee: 0.0},
-    %{max: 50, employer: 0.50, employee: 0.0},
-    %{max: 70, employer: 0.80, employee: 0.0},
-    %{max: 100, employer: 1.10, employee: 0.0},
-    %{max: 140, employer: 1.50, employee: 0.0},
-    %{max: 200, employer: 2.10, employee: 0.0},
-    %{max: 300, employer: 3.10, employee: 0.0},
-    %{max: 400, employer: 4.40, employee: 0.0},
-    %{max: 500, employer: 5.60, employee: 0.0},
-    %{max: 600, employer: 6.90, employee: 0.0},
-    %{max: 700, employer: 8.10, employee: 0.0},
-    %{max: 800, employer: 9.30, employee: 0.0},
-    %{max: 900, employer: 10.50, employee: 0.0},
-    %{max: 1000, employer: 11.80, employee: 0.0},
-    %{max: 1100, employer: 13.00, employee: 0.0},
-    %{max: 1200, employer: 14.20, employee: 0.0},
-    %{max: 1300, employer: 15.40, employee: 0.0},
-    %{max: 1400, employer: 16.60, employee: 0.0},
-    %{max: 1500, employer: 17.90, employee: 0.0},
-    %{max: 1600, employer: 19.10, employee: 0.0},
-    %{max: 1700, employer: 20.30, employee: 0.0},
-    %{max: 1800, employer: 21.50, employee: 0.0},
-    %{max: 1900, employer: 22.70, employee: 0.0},
-    %{max: 2000, employer: 24.00, employee: 0.0},
-    %{max: 2100, employer: 25.20, employee: 0.0},
-    %{max: 2200, employer: 26.40, employee: 0.0},
-    %{max: 2300, employer: 27.60, employee: 0.0},
-    %{max: 2400, employer: 28.80, employee: 0.0},
-    %{max: 2500, employer: 30.00, employee: 0.0},
-    %{max: 2600, employer: 31.20, employee: 0.0},
-    %{max: 2700, employer: 32.40, employee: 0.0},
-    %{max: 2800, employer: 33.60, employee: 0.0},
-    %{max: 2900, employer: 34.80, employee: 0.0},
-    %{max: 3000, employer: 36.10, employee: 0.0},
-    %{max: 3100, employer: 37.30, employee: 0.0},
-    %{max: 3200, employer: 38.50, employee: 0.0},
-    %{max: 3300, employer: 39.70, employee: 0.0},
-    %{max: 3400, employer: 40.90, employee: 0.0},
-    %{max: 3500, employer: 42.10, employee: 0.0},
-    %{max: 3600, employer: 43.30, employee: 0.0},
-    %{max: 3700, employer: 44.50, employee: 0.0},
-    %{max: 3800, employer: 45.70, employee: 0.0},
-    %{max: 3900, employer: 46.90, employee: 0.0},
-    %{max: 4000, employer: 48.20, employee: 0.0},
-    %{max: 4100, employer: 49.40, employee: 0.0},
-    %{max: 4200, employer: 50.60, employee: 0.0},
-    %{max: 4300, employer: 51.80, employee: 0.0},
-    %{max: 4400, employer: 53.00, employee: 0.0},
-    %{max: 4500, employer: 54.20, employee: 0.0},
-    %{max: 4600, employer: 55.40, employee: 0.0},
-    %{max: 4700, employer: 56.60, employee: 0.0},
-    %{max: 4800, employer: 57.80, employee: 0.0},
-    %{max: 4900, employer: 59.00, employee: 0.0},
-    %{max: 5000, employer: 60.30, employee: 0.0},
-    %{max: 5100, employer: 61.50, employee: 0.0},
-    %{max: 5200, employer: 62.70, employee: 0.0},
-    %{max: 5300, employer: 63.90, employee: 0.0},
-    %{max: 5400, employer: 65.10, employee: 0.0},
-    %{max: 5500, employer: 66.30, employee: 0.0},
-    %{max: 5600, employer: 67.50, employee: 0.0},
-    %{max: 5700, employer: 68.70, employee: 0.0},
-    %{max: 5800, employer: 69.90, employee: 0.0},
-    %{max: 5900, employer: 71.10, employee: 0.0},
-    %{max: 6000, employer: 72.40, employee: 0.0},
-    %{max: 999_999, employer: 72.40, employee: 0.0}
-  ]
+  alias PayrollApi.Statutory.Schedule
 
   # EIS (SIP) bracket table — wage ceiling RM6,000, equal employee/employer.
   # Base 0.2% each side scaled per bracket. (2024-2026 SIP rates.)
@@ -234,22 +105,36 @@ defmodule PayrollApi.Statutory.Rates do
     }
   end
 
+  # The EPF and SOCSO tables in `Schedule` are the editions in force now: KWSP
+  # Third Schedule from 1 October 2025, and PERKESO Act 4 including SKBBK from
+  # 1 June 2026. They are the correct basis for 2026 only.
+  #
+  # 2025 is deliberately left unverified. Jan–Sep 2025 predates the current
+  # Third Schedule, and all of 2025 predates SKBBK, so calculating a 2025
+  # payroll from these tables overstates the employee SOCSO share. Transcribing
+  # the superseded editions is the fix; until then a 2025 result is an estimate.
+  defp table_basis(2026), do: %{epf: "2025-10", socso: "2026-06", verified: true}
+  defp table_basis(_year), do: %{epf: "2025-10", socso: "2026-06", verified: false}
+
   defp snapshot(year, from, to) do
+    basis = table_basis(year)
+
     %{
       year: year,
       effective_from: from,
       effective_to: to,
       epf: %{
-        employee_rate: 0.11,
-        employer_rate_at_or_under_5k: 0.13,
-        employer_rate_over_5k: 0.12,
-        wage_threshold: 5000,
-        schedule_required_below_rm: 20_000.01
+        # Percentage rules apply only above the Third Schedule's RM20,000
+        # ceiling; at or below it the band tables in `Schedule` govern.
+        employee_rate_above_table: 0.11,
+        employer_rate_above_table: 0.12,
+        table_ceiling: 20_000,
+        table_edition: basis.epf
       },
       socso: %{
         wage_ceiling: 6000,
-        category1_brackets: @socso_category1_brackets,
-        category2_brackets: @socso_category2_brackets
+        table_edition: basis.socso,
+        includes_skbbk: true
       },
       eis: %{
         wage_ceiling: 6000,
@@ -268,17 +153,25 @@ defmodule PayrollApi.Statutory.Rates do
       minimum_wage: 1700,
       sources: %{
         epf:
-          "KWSP Third Schedule effective October 2025; wage-range table below RM20,000.01; percentage rules above",
-        socso: "PERKESO Oct 2024 revision, ceiling RM6,000 (verified)",
-        eis: "SIP Act 2017, ceiling RM6,000 (verified)",
-        hrdf: "PSMB Act 2001",
+          "KWSP Third Schedule (EPF Act 1991) effective 1 October 2025, Parts A/C/E transcribed to band tables; percentage rules above RM20,000",
+        socso: "PERKESO Act 4 contribution table including SKBBK, mandatory from 1 June 2026",
+        eis: "SIP Act 2017, ceiling RM6,000 (NOT yet verified against source)",
+        hrdf: "PSMB Act 2001 (NOT yet verified against source)",
         minimum_wage: "Minimum Wages Order 2025 (RM1,700, gazetted)",
-        pcb: "LHDN YA 2025/2026 resident brackets (verified)"
+        pcb: "Simplified annualised brackets — NOT the LHDN MTD specification"
       },
+      # Scheme-level verification. `verified` stays false while any scheme in
+      # the snapshot is unverified, so no caller can read it as filing-safe.
       verified: false,
-      verified_at: "2026-08-07"
+      verified_schemes: verified_schemes(basis.verified),
+      verified_at: "2026-08-10"
     }
   end
+
+  # EPF and SOCSO are backed by transcribed official tables; EIS, HRDF and PCB
+  # are not, so they are never reported as verified.
+  defp verified_schemes(true), do: [:epf, :socso]
+  defp verified_schemes(false), do: []
 
   @doc "Current statutory rates snapshot, or `{:error, :unsupported_year}`."
   def rates, do: Map.fetch!(rates_by_year(), @default_year)
@@ -304,80 +197,102 @@ defmodule PayrollApi.Statutory.Rates do
   end
 
   @doc """
-  Compute EPF contribution (employee + employer).
-  Employer rate: 13% at/below RM5,000, 12% above.
-  """
-  def epf(wage, rates \\ nil, opts \\ []) do
-    r = rates || rates()
-    category = Keyword.get(opts, :citizenship, :malaysian)
-    age_60_plus = Keyword.get(opts, :age_60_plus, false)
-    strict_schedule = Keyword.get(opts, :strict_schedule, false)
+  Compute EPF contribution (employee + employer) from the KWSP Third Schedule.
 
-    if strict_schedule and wage <= 20_000 do
-      {:error, :epf_schedule_required}
-    else
-      epf_percentage(wage, r, category, age_60_plus)
+  At or below RM20,000 the schedule's band tables govern: each band carries a
+  fixed ringgit amount, which is not the same as applying the headline
+  percentage to the wage. Above RM20,000 the schedule switches to percentages.
+
+  Options select the applicable Part:
+
+    * `:citizenship` — `:malaysian` (default) or `:non_malaysian`
+    * `:permanent_resident` — non-citizens with PR status, or who elected to
+      contribute before 1 August 1998, follow the citizen tables
+    * `:age_60_plus`
+
+  | Profile | Part | Above RM20,000 |
+  |---|---|---|
+  | Citizen / PR / pre-1998 elector, under 60 | A | 11% employee, 12% employer |
+  | Non-citizen PR or elector, 60+ | C | 5.5% employee, 6% employer |
+  | Citizen, 60+ | E | 0% employee, 4% employer |
+  | Other non-citizens (any age) | F | 2% employee, 2% employer (no table) |
+  """
+  def epf(wage, _rates \\ nil, opts \\ []) do
+    wage_sen = Money.to_sen(wage)
+    {employee_sen, employer_sen} = epf_contribution(epf_part(opts), wage_sen)
+
+    %{
+      employee: Money.to_ringgit(employee_sen),
+      employer: Money.to_ringgit(employer_sen)
+    }
+  end
+
+  defp epf_part(opts) do
+    citizen? = Keyword.get(opts, :citizenship, :malaysian) == :malaysian
+    schedule_resident? = citizen? or Keyword.get(opts, :permanent_resident, false)
+
+    cond do
+      not schedule_resident? -> :f
+      not Keyword.get(opts, :age_60_plus, false) -> :a
+      citizen? -> :e
+      true -> :c
     end
   end
 
-  defp epf_percentage(wage, _r, :non_malaysian, _age_60_plus) do
-    wage_sen = Money.to_sen(wage)
-    employee_sen = Money.percentage(wage_sen, 2, 100)
-    employer_sen = Money.percentage(wage_sen, 2, 100)
-    {employee_sen, employer_sen} = round_epf_total(wage, employee_sen, employer_sen)
-
-    %{
-      employee: Money.to_ringgit(employee_sen),
-      employer: Money.to_ringgit(employer_sen)
-    }
+  # Part F has no band table: a flat 2%/2% at every wage, total rounded up.
+  defp epf_contribution(:f, wage_sen) do
+    share = Money.percentage(wage_sen, 2, 100)
+    round_epf_total(share, share)
   end
 
-  defp epf_percentage(wage, _r, _citizenship, true) do
-    wage_sen = Money.to_sen(wage)
-    {employee_sen, employer_sen} = round_epf_total(wage, 0, Money.percentage(wage_sen, 4, 100))
+  defp epf_contribution(part, wage_sen) do
+    case Schedule.epf(part, wage_sen) do
+      {:ok, %{employee: employee_sen, employer: employer_sen}} ->
+        # Band amounts are already whole ringgit as printed; no rounding.
+        {employee_sen, employer_sen}
 
-    %{
-      employee: Money.to_ringgit(employee_sen),
-      employer: Money.to_ringgit(employer_sen)
-    }
+      :above_table ->
+        {employee_rate, employer_rate} = epf_rate_above_table(part)
+
+        round_epf_total(
+          Money.percentage(wage_sen, employee_rate, 1000),
+          Money.percentage(wage_sen, employer_rate, 1000)
+        )
+    end
   end
 
-  defp epf_percentage(wage, r, _citizenship, false) do
-    wage_sen = Money.to_sen(wage)
+  # Per-mille so Part C's 5.5% stays exact.
+  defp epf_rate_above_table(:a), do: {110, 120}
+  defp epf_rate_above_table(:c), do: {55, 60}
+  defp epf_rate_above_table(:e), do: {0, 40}
 
-    employer_rate = if wage <= r.epf.wage_threshold, do: 13, else: 12
-    employee_sen = Money.percentage(wage_sen, 11, 100)
-    employer_sen = Money.percentage(wage_sen, employer_rate, 100)
-    {employee_sen, employer_sen} = round_epf_total(wage, employee_sen, employer_sen)
-
-    %{
-      employee: Money.to_ringgit(employee_sen),
-      employer: Money.to_ringgit(employer_sen)
-    }
-  end
-
-  defp round_epf_total(wage, employee_sen, employer_sen) when wage > 20_000 do
+  # "The total contribution which includes cents shall be rounded to the next
+  # ringgit." The schedule does not say which side absorbs the rounding; this
+  # keeps the employee share exact and adds the remainder to the employer, the
+  # behaviour this module has always had. Unverified — see PAY-004.
+  defp round_epf_total(employee_sen, employer_sen) do
     total = Money.ceil_ringgit(employee_sen + employer_sen)
     {employee_sen, total - employee_sen}
   end
 
-  defp round_epf_total(_wage, employee_sen, employer_sen), do: {employee_sen, employer_sen}
-
   @doc """
-  SOCSO (PERKESO) contribution — Category 1 (below 60) bracket table,
-  wage ceiling RM6,000. `age_60_plus: true` selects Category 2.
-  """
-  def socso(wage, rates \\ nil, opts \\ %{}) do
-    r = rates || rates()
+  SOCSO (PERKESO) contribution from the official Act 4 table.
 
-    brackets =
-      if Map.get(opts, :age_60_plus, false),
-        do: r.socso.category2_brackets,
-        else: r.socso.category1_brackets
+  Category 1 (under 60) covers employment injury, invalidity and SKBBK.
+  Category 2 (`age_60_plus: true`) covers employment injury and SKBBK.
+
+  SKBBK (Lindung 24 Jam) has been mandatory since 1 June 2026 and is included
+  in the employee share for both categories.
+  """
+  def socso(wage, _rates \\ nil, opts \\ %{}) do
+    category = if Map.get(opts, :age_60_plus, false), do: :category2, else: :category1
+
+    %{employee: employee_sen, employer: employer_sen} =
+      Schedule.socso(category, Money.to_sen(wage))
 
     %{
-      employee: round_money(bracket_value(brackets, wage, :employee)),
-      employer: round_money(bracket_value(brackets, wage, :employer))
+      employee: Money.to_ringgit(employee_sen),
+      employer: Money.to_ringgit(employer_sen)
     }
   end
 

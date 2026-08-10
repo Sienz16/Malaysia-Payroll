@@ -139,9 +139,14 @@ defmodule PayrollApi.Statutory.Pcb do
     r = Map.get(opts, :rates, PayrollApi.Statutory.Rates.rates())
     wage_sen = Money.to_sen(wage)
 
+    # Callers normally pass the EPF already computed for this payslip. The
+    # fallback goes through the Third Schedule too — a percentage of wage would
+    # disagree with the band tables and quietly shift the relief.
     epf_monthly_sen =
-      opts
-      |> Map.get(:epf_monthly, wage * r.epf.employee_rate)
+      case Map.fetch(opts, :epf_monthly) do
+        {:ok, epf_monthly} -> epf_monthly
+        :error -> PayrollApi.Statutory.Rates.epf(wage).employee
+      end
       |> Money.to_sen()
 
     spouse_eligible = Map.get(opts, :spouse_eligible, false)

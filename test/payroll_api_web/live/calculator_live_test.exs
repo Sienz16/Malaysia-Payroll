@@ -69,10 +69,10 @@ defmodule PayrollApiWeb.CalculatorLiveTest do
     assert has_element?(view, "#developer")
   end
 
-  test "docs page lists endpoints and auth", %{conn: conn} do
+  test "docs page lists public endpoints and rate limits", %{conn: conn} do
     conn = get(conn, ~p"/api-docs")
     html = html_response(conn, 200)
     assert html =~ "calculate-payslip"
-    assert html =~ "Authorization"
+    assert html =~ "rate-limited by client IP"
   end
 end

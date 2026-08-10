@@ -13,12 +13,19 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 
 | ID | Severity | Status | Finding | Minimal acceptance criteria | Verification |
 |---|---|---|---|---|---|
-| PAY-001 | Critical | blocked | KWSP Third Schedule is a 55-page scanned PDF. Exact wage bands, categories, and rounding need verified transcription. | Effective-dated schedule data and official known-answer tests. | Official source retrieved; no reliable table extraction available |
-| PAY-002 | Critical | blocked | PCB remains simplified Method 1. | Official LHDN MTD specification and ordinary/additional remuneration examples. | Selected-year and focused PCB tests pass |
-| PAY-004 | High | blocked | Scheme rounding needs official boundary evidence. | Official boundary known-answer suite. | Integer-sen calculations covered by unit tests |
-| PAY-005 | High | blocked | HRD Corp eligibility and wage-base rules need primary guidance. | Official eligibility rules and known-answer tests. | Declared rate-category tests pass |
-| PAY-006 | High | blocked | Employee statutory profile lacks official PR/category matrix. | Official matrix and known-answer tests. | Current Malaysian/non-Malaysian/60+ paths tested |
-| TEST-001 | High | blocked | Internal formula tests are not official statutory result tests. | Release-gating official known-answer suites. | `mix precommit` passes |
+| PAY-002 | Critical | blocked | PCB remains simplified Method 1. | Official LHDN MTD specification and ordinary/additional remuneration examples. | `hasil.gov.my` unreachable from the build environment (connections time out; likely geo-restricted). Target file identified: `spesifikasi-kaedah-pengiraan-berkomputer-pcb-2026.pdf`. Needs manual retrieval. |
+| PAY-004 | High | blocked | Rounding apportionment above RM20,000 needs official evidence. | Official boundary known-answer suite. | Schedule states only "total rounded to the next ringgit"; which side absorbs it is an assumption — see `round_epf_total/2`. |
+| PAY-005 | High | blocked | HRD Corp eligibility and wage-base rules need primary guidance. | Official eligibility rules and known-answer tests. | `hrdcorp.gov.my` reachable; not yet retrieved. |
+| PAY-008 | High | open | EIS (Act 800) table is still the untranscribed prototype. | Transcribe PERKESO Act 800 Second Schedule. | Source URL identified; download blocked by WAF, needs the same browser-save route used for SOCSO. |
+| PAY-009 | High | open | Rates are keyed by year, but SKBBK began mid-year (1 June 2026), and the Oct 2025 Third Schedule splits 2025. A year cannot express either. | Effective-date keyed snapshots, or documented refusal for affected periods. | 2026 is correct as "current law". Jan–May 2026 and all of 2025 overstate employee SOCSO by the SKBBK amount. |
+
+### Cleared
+
+| ID | Finding | Resolution |
+|---|---|---|
+| PAY-001 | KWSP Third Schedule assumed to be a scanned PDF. | **Assumption was wrong** — the 1 October 2025 edition has a clean text layer. Parts A/C/E transcribed to `priv/statutory/epf_third_schedule_2025-10/` (401 bands each), validated for contiguity and printed totals. Percentage-based EPF was confirmed wrong for every wage off a band boundary (RM2,985: was 328.35/388.05, correct 330.00/390.00). |
+| PAY-006 | No official PR/category matrix. | Matrix taken from the schedule's own Part definitions. `:permanent_resident` option added; Parts A/C/E/F now selected by citizenship, PR status, and age. Parts B and D confirmed deleted by Act A1760/2025. |
+| TEST-001 | Internal formula tests only. | `test/statutory/schedule_test.exs` plus known-answer tests in `rates_test.exs` assert values read directly off the source documents, with band citations in comments. |
 
 ## Deferred By Scope
 
@@ -43,16 +50,42 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | OPS-003 | verified | Removed unused telemetry reporter dependencies/process. |
 | ARCH-003 to ARCH-006 | verified | Removed unreachable home, stale OpenAPI artifact, telemetry scaffolding, and unused generated UI helpers. |
 
+## New Findings
+
+| ID | Severity | Status | Finding |
+|---|---|---|---|
+| PAY-007b | Critical | fixed | SOCSO omitted SKBBK (Lindung 24 Jam) entirely. Mandatory since 1 June 2026 at 0.75% employee, ceiling RM6,000. Employee share was under-deducted by up to RM44.65/month/head, and Category 2 (60+) was returning a zero employee share when SKBBK does apply. Table replaced from the official PERKESO Act 4 source. |
+| TEST-002 | Medium | open | 4 `CalculatorLiveTest` failures exist on `main`, predating this work. The "Latest Verification Baseline" below claimed `mix precommit` passed with 97 tests; it does not currently pass. |
+
 ## Latest Verification Baseline
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-10 | `mix precommit` | Passed (compile --warnings-as-errors, format, 97 tests) |
+| 2026-08-10 | `mix test` | 107/111. The 4 failures are pre-existing `CalculatorLiveTest` cases (TEST-002), unrelated to statutory work — confirmed by stashing this change and re-running. |
+| 2026-08-10 | `mix compile --warnings-as-errors`, `mix format` | Clean |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 
 ## Completion Baseline
 
 - Working stateless public prototype: **yes**
 - Safe for real payroll filing: **no**
-- Remaining code audit work: blocked statutory source validation only
+- EPF and SOCSO: computed from transcribed official tables, known-answer tested
+- PCB, EIS, HRDF: still prototype approximations. PCB is the largest deduction
+  on most payslips and is not the LHDN MTD algorithm, so a payslip total cannot
+  be relied on regardless of EPF/SOCSO now being correct.
 - Deferred environment verification: deployment proxy/HTTPS and browser responsive review
+
+## Source Documents
+
+Transcribed tables live in `priv/statutory/`. Both source PDFs were retrieved
+from the issuing authority; neither site permits scripted download, so both
+were fetched through a browser session.
+
+| Table | Source | Edition |
+|---|---|---|
+| `epf_third_schedule_2025-10/part_{a,c,e}.csv` | KWSP Third Schedule, EPF Act 1991 | Effective 1 October 2025 |
+| `socso_act4_2026-06/rates.csv` | PERKESO Act 4 contribution table incl. SKBBK | Effective 1 June 2026 |
+
+Re-transcription is scripted and validating: extraction refuses to emit a table
+whose printed components do not sum to their printed totals, or whose bands do
+not tile their range without gap or overlap.
