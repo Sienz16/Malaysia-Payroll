@@ -94,13 +94,16 @@ defmodule PayrollApi.Statutory.RatesTest do
     assert result2.employee == 2.9
   end
 
-  test "hrdf: 1% employer only" do
+  # PAY-005: rates confirmed against PSMB Act 2001 (Akta 612) ss.14(1)/15(2)
+  # directly — 1% mandatory (10+ employees), 0.5% optional (5-9). No employee
+  # share exists in the Act at all.
+  test "hrdf: mandatory 1%, employer only (Akta 612 s.14(1))" do
     result = Rates.hrdf(5000)
     assert result.employee == 0
     assert result.employer == 50.0
   end
 
-  test "hrdf supports reduced and exempt categories" do
+  test "hrdf: optional 0.5% and exempt categories (Akta 612 s.15(2))" do
     assert Rates.hrdf(5000, nil, category: :reduced_0_5pct).employer == 25.0
     assert Rates.hrdf(5000, nil, category: :exempt).employer == 0
   end

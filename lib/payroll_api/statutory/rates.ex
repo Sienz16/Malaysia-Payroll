@@ -10,9 +10,11 @@ defmodule PayrollApi.Statutory.Rates do
 
   * EPF, SOCSO and EIS are computed from official tables transcribed into
     `priv/statutory/` and covered by known-answer tests. See `Schedule`.
-  * HRDF and PCB are still prototype approximations. PCB in particular is
-    a simplified annualised bracket calculation, **not** the LHDN MTD
-    specification, and will disagree with a real payslip.
+  * HRDF is a flat percentage confirmed against the PSMB Act 2001 (Akta 612)
+    itself — no table to transcribe, see `hrdf/3`.
+  * PCB is still a prototype approximation: a simplified annualised bracket
+    calculation, **not** the LHDN MTD specification, and will disagree with
+    a real payslip.
 
   A snapshot's `verified` flag stays false while any scheme is unverified, so
   no caller can mistake the whole result for filing-safe output.
@@ -86,7 +88,8 @@ defmodule PayrollApi.Statutory.Rates do
           "KWSP Third Schedule (EPF Act 1991) effective 1 October 2025, Parts A/C/E transcribed to band tables; percentage rules above RM20,000",
         socso: "PERKESO Act 4 contribution table including SKBBK, mandatory from 1 June 2026",
         eis: "PERKESO Act 800 Second Schedule contribution table, ceiling RM6,000",
-        hrdf: "PSMB Act 2001 (NOT yet verified against source)",
+        hrdf:
+          "PSMB Act 2001 (Akta 612) ss.14(1)/15(2): 1% mandatory (10+ employees), 0.5% optional (5-9)",
         minimum_wage: "Minimum Wages Order 2025 (RM1,700, gazetted)",
         pcb: "Simplified annualised brackets — NOT the LHDN MTD specification"
       },
@@ -98,10 +101,12 @@ defmodule PayrollApi.Statutory.Rates do
     }
   end
 
-  # EPF, SOCSO and EIS are backed by transcribed official tables; HRDF and PCB
-  # are not, so they are never reported as verified.
-  defp verified_schemes(true), do: [:epf, :socso, :eis]
-  defp verified_schemes(false), do: [:eis]
+  # EPF and SOCSO are backed by transcribed official tables and gated by
+  # `@tables_effective_from`; EIS and HRDF are verified against source
+  # regardless of period (flat table / flat percentage, nothing mid-year
+  # changed them). PCB is not verified at all — still a prototype.
+  defp verified_schemes(true), do: [:epf, :socso, :eis, :hrdf]
+  defp verified_schemes(false), do: [:eis, :hrdf]
 
   # The loaded tables (EPF edition 1 Oct 2025, SOCSO edition 1 Jun 2026 incl.
   # SKBBK) are only correct for periods on/after the later of the two —
@@ -281,7 +286,24 @@ defmodule PayrollApi.Statutory.Rates do
   end
 
   @doc """
-  HRDF — employer 1% of wage (levy). Employee pays nothing.
+  HRDF (HRD Corp) levy — employer only, employee pays nothing (PSMB Act
+  2001 / Akta 612 has no employee share at all).
+
+  Eligibility and rate (Akta 612 ss.14(1), 15(1)-(2), First Schedule):
+  employers with 10+ Malaysian employees in a covered industry class must
+  register and pay 1% (`:standard_1pct`); employers with 5-9 may register
+  voluntarily at 0.5% (`:reduced_0_5pct`). Crossing the class's employee-count
+  threshold mid-year steps the rate immediately on the way up, but only at
+  year-end on the way down (s.15(4)-(7)) — this module has no employee-count
+  history, so the caller must already know and pass their current rate.
+
+  `wage` here must be the Act's "upah" wage base (s.2): basic salary plus
+  fixed allowances/emoluments paid in cash, plus leave pay and wage arrears.
+  It excludes retirement/pension-fund contributions, travel allowance or
+  concession, special-expense reimbursement, retrenchment/retirement
+  benefit, bonus, commission, and apprentice allowance — this module takes
+  one wage figure with no component breakdown (same as EPF/SOCSO/EIS), so
+  the caller is responsible for excluding those before calling.
   """
   def hrdf(wage, rates \\ nil, opts \\ []) do
     r = rates || rates()

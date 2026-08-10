@@ -47,7 +47,7 @@ defmodule PayrollApiWeb.PayrollLive do
               <div class="terminal-result">
                 <div><span class="code-muted">&#123;</span></div>
                 <div>
-                  &nbsp; <span class="code-key">"net_pay"</span>: <span class="code-number">4305.35</span>,
+                  &nbsp; <span class="code-key">"net_pay"</span>: <span class="code-number">4268.20</span>,
                 </div>
                 <div>
                   &nbsp; <span class="code-key">"employee_contributions"</span>:
@@ -57,7 +57,10 @@ defmodule PayrollApiWeb.PayrollLive do
                   &nbsp;&nbsp;&nbsp; <span class="code-key">"epf"</span>: <span class="code-number">550.00</span>,
                 </div>
                 <div>
-                  &nbsp;&nbsp;&nbsp; <span class="code-key">"socso"</span>: <span class="code-number">24.75</span>,
+                  &nbsp;&nbsp;&nbsp; <span class="code-key">"socso"</span>: <span class="code-number">61.90</span>,
+                </div>
+                <div>
+                  &nbsp;&nbsp;&nbsp; <span class="code-key">"eis"</span>: <span class="code-number">9.90</span>,
                 </div>
                 <div>
                   &nbsp;&nbsp;&nbsp; <span class="code-key">"pcb"</span>:
@@ -121,7 +124,7 @@ defmodule PayrollApiWeb.PayrollLive do
             <div class="terminal-bar">
               <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">response.json</span>
             </div><div class="code-preview-lines">
-              <div>success: true</div><div>net_pay: 4305.35</div><div>rates_version: 2026.2</div><div>
+              <div>success: true</div><div>net_pay: 4268.20</div><div>rates_version: 2026.2</div><div>
                 employee_contributions: ...
               </div>
             </div>
