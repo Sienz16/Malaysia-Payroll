@@ -8,13 +8,9 @@ defmodule PayrollApi.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      PayrollApiWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:payroll_api, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: PayrollApi.PubSub},
       PayrollApi.RateLimiter,
-      # Start a worker by calling: PayrollApi.Worker.start_link(arg)
-      # {PayrollApi.Worker, arg},
-      # Start to serve requests, typically the last entry
       PayrollApiWeb.Endpoint
     ]
 

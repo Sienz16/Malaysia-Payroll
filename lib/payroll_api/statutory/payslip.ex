@@ -10,6 +10,7 @@ defmodule PayrollApi.Statutory.Payslip do
   alias PayrollApi.Statutory.Rates
   alias PayrollApi.Statutory.Pcb
   alias PayrollApi.Statutory.Money
+  alias PayrollApi.Input
 
   @doc """
   Calculate a full payslip breakdown.
@@ -101,18 +102,7 @@ defmodule PayrollApi.Statutory.Payslip do
     {:ok, %{count: length(results), results: results}}
   end
 
-  # Same wage contract as the API boundary: numbers pass through, complete
-  # numeric strings convert, anything else is a row error.
-  defp normalize_wage(wage) when is_number(wage), do: {:ok, wage}
-
-  defp normalize_wage(wage) when is_binary(wage) do
-    case Float.parse(wage) do
-      {w, ""} -> {:ok, w}
-      _ -> {:error, :invalid_wage}
-    end
-  end
-
-  defp normalize_wage(_), do: {:error, :invalid_wage}
+  defp normalize_wage(wage), do: Input.parse_wage(wage)
 
   # Fetch a value by atom key, falling back to string key (JSON input).
   defp emp_value(map, key, default) do

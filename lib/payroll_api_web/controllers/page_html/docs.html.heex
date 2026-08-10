@@ -6,7 +6,7 @@
           <div class="eyebrow"><span class="eyebrow-dot"></span> Developer reference</div>
           <h1>Build payroll<br /><em>into your product.</em></h1>
           <p>
-            Authenticated endpoints for Malaysia statutory rates, payslip calculations, bulk runs, and PDF output.
+            Public endpoints for Malaysia statutory rates, payslip calculations, bulk runs, and PDF output.
           </p>
         </div>
         <div class="docs-hero-actions">
@@ -16,7 +16,7 @@
       </div>
 
       <div class="docs-notice">
-        <.icon name="hero-key" class="h-4 w-4" /><span>Rates and calculation endpoints require <code>Authorization: Bearer $PAYROLL_API_KEY</code>. Health and OpenAPI remain public.</span>
+        <.icon name="hero-signal" class="h-4 w-4" /><span>All endpoints are public. Requests are rate-limited by client IP.</span>
       </div>
 
       <div class="docs-layout">
@@ -39,7 +39,6 @@
               <div class="terminal-bar">
                 <span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-label">request.sh</span>
               </div><pre phx-no-curly-interpolation>curl -X POST https://payroll-api.example.com/api/v1/calculate-payslip \
-  -H "Authorization: Bearer $PAYROLL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"wage": 5000}'</pre>
             </div>

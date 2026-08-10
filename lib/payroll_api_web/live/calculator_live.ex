@@ -2,6 +2,7 @@ defmodule PayrollApiWeb.CalculatorLive do
   use PayrollApiWeb, :live_view
 
   alias PayrollApi.Statutory.Payslip
+  alias PayrollApi.Input
 
   @impl true
   def mount(_params, _session, socket) do
@@ -18,7 +19,7 @@ defmodule PayrollApiWeb.CalculatorLive do
   def handle_event("calculate", %{"wage" => wage} = params, socket) do
     include_hrdf = Map.get(params, "include_hrdf", "false") == "true"
 
-    case Float.parse(wage) do
+    case Input.parse_wage(wage) do
       {wage, ""} ->
         case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf}) do
           {:ok, result} ->

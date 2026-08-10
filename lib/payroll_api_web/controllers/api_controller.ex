@@ -4,6 +4,7 @@ defmodule PayrollApiWeb.ApiController do
   alias PayrollApi.Statutory.Payslip
   alias PayrollApi.Statutory.Rates
   alias PayrollApiWeb.I18n
+  alias PayrollApi.Input
 
   @doc "GET /api/v1/rates — current statutory rates as JSON"
   def rates(conn, params) do
@@ -22,7 +23,7 @@ defmodule PayrollApiWeb.ApiController do
     married = parse_bool(params["married"], false)
     lang = I18n.lang(params["lang"])
 
-    with {:ok, wage} <- parse_wage_value(wage),
+    with {:ok, wage} <- Input.parse_wage(wage),
          {:ok, year} <- parse_year(params["year"]),
          {:ok, children} <- parse_children(params["children"]) do
       case Payslip.calculate(%{
@@ -102,30 +103,9 @@ defmodule PayrollApiWeb.ApiController do
     end
   end
 
-  defp parse_wage_param(%{"wage" => wage}) when is_number(wage), do: {:ok, wage}
-
-  defp parse_wage_param(%{"wage" => wage}) when is_binary(wage) do
-    case Float.parse(wage) do
-      {w, ""} -> {:ok, w}
-      _ -> {:error, :invalid_wage}
-    end
-  end
+  defp parse_wage_param(%{"wage" => wage}), do: Input.parse_wage(wage)
 
   defp parse_wage_param(_), do: {:error, :wage_required}
-
-  # Shared wage normalization for JSON bodies: numbers pass through, complete
-  # numeric strings are converted, trailing garbage is rejected. Same contract
-  # as parse_wage_param/1 for the PDF query string.
-  defp parse_wage_value(wage) when is_number(wage), do: {:ok, wage}
-
-  defp parse_wage_value(wage) when is_binary(wage) do
-    case Float.parse(wage) do
-      {w, ""} -> {:ok, w}
-      _ -> {:error, :invalid_wage}
-    end
-  end
-
-  defp parse_wage_value(_), do: {:error, :invalid_wage}
 
   @doc "GET /api/v1/openapi.yaml — serve the OpenAPI spec"
   def openapi_spec(conn, _params) do
