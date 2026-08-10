@@ -55,6 +55,15 @@ if config_env() == :prod do
 
   config :payroll_api, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  database_url =
+    System.get_env("DATABASE_URL") ||
+      raise "environment variable DATABASE_URL is missing"
+
+  config :payroll_api, PayrollApi.Repo,
+    url: database_url,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE", "10")),
+    socket_options: [:inet6]
+
   config :payroll_api, PayrollApiWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
