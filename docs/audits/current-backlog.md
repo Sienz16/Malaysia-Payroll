@@ -59,8 +59,8 @@ Cleanup follows correctness and security work unless deletion removes active ris
 |---|---|---|---|---:|
 | ARCH-003 | Low | verified | Deleted unreachable generated Phoenix home page and action; landing owns `/`. | about 202 lines |
 | ARCH-004 | Low | verified | Removed duplicate digested OpenAPI artifact (`openapi-2ae06d...yaml`) that carried stale EPF direction and missing profile fields. | 245 lines |
-| ARCH-005 | Low | open | Remove unused telemetry process/dependencies if no reporter is planned. | about 71 lines, 2 dependencies |
-| ARCH-006 | Low | in_progress | Removed DaisyUI dependency and active plugin; generated component references/comments remain for cleanup. | about 250-350 lines, 1 dependency |
+| ARCH-005 | Low | verified | Removed unused telemetry supervisor/module and metrics dependencies; endpoint telemetry remains active. | about 71 lines, 2 dependencies |
+| ARCH-006 | Low | verified | Removed unused generated button, header, table, list, theme-toggle, and error-list helpers; no DaisyUI dependency remains. | about 250-350 lines, 1 dependency |
 | ARCH-007 | Low | open | Remove unused generated extension points and comments. | about 40-70 lines |
 | ARCH-008 | Low | open | Remove translated response-label payload if not contractual. | about 65-95 lines |
 
@@ -86,8 +86,8 @@ Conservative cleanup ceiling: **808-938 lines and 3 direct dependencies** (remai
 
 | Date | Command | Result |
 |---|---|---|
-| 2026-08-10 | `mix test` | 95 tests passed |
-| 2026-08-10 | `mix precommit` | Passed (compile --warnings-as-errors, format, 95 tests) |
+| 2026-08-10 | `mix test` | 97 tests passed |
+| 2026-08-10 | `mix precommit` | Passed (compile --warnings-as-errors, format, 97 tests) |
 | 2026-08-08 | `mix hex.audit` | No retired or security-advisory packages found |
 | 2026-08-08 | `mix deps.audit` | Task unavailable |
 
