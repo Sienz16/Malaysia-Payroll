@@ -24,6 +24,7 @@ defmodule PayrollApiWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :health
+    get "/ready", HealthController, :ready
     get "/openapi.yaml", ApiController, :openapi_spec
   end
 

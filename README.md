@@ -11,6 +11,7 @@
 | Endpoint | Description |
 |---|---|
 | `GET /api/v1/health` | Liveness probe (public) |
+| `GET /api/v1/ready` | Readiness probe (public) |
 | `GET /api/v1/rates` | Current statutory rate tables (EPF/SOCSO/EIS/HRDF, min wage) |
 | `POST /api/v1/calculate-payslip` | Statutory breakdown: EPF + SOCSO + EIS + HRDF + simplified PCB |
 | `POST /api/v1/calculate-payslip/bulk` | Calculate up to 500 employee rows |

@@ -28,7 +28,24 @@ paths:
                 properties:
                   success: { type: boolean, example: true }
                   status: { type: string, example: ok }
-                  version: { type: string, example: "2026.2" }
+                   version: { type: string, example: "2026.2" }
+  /ready:
+    get:
+      summary: Readiness probe
+      operationId: ready
+      security: []
+      responses:
+        "200":
+          description: Required application workers are available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  status: { type: string, example: ready }
+        "503":
+          description: Required application workers are unavailable
   /openapi.yaml:
     get:
       summary: Serve this OpenAPI contract
