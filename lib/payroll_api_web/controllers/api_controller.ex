@@ -8,11 +8,13 @@ defmodule PayrollApiWeb.ApiController do
 
   @doc "GET /api/v1/rates — current statutory rates as JSON"
   def rates(conn, params) do
-    with {:ok, year} <- parse_year(params["year"]) do
+    with {:ok, year} <- parse_year(params["year"]),
+         {:ok, month} <- parse_month(params["month"]),
+         rates when is_map(rates) <- Rates.rates(year, month) do
       lang = I18n.lang(params["lang"])
-      render(conn, :rates, %{rates: Rates.rates(year), version: Rates.version(year), lang: lang})
+      render(conn, :rates, %{rates: rates, version: Rates.version(year), lang: lang})
     else
-      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -25,6 +27,7 @@ defmodule PayrollApiWeb.ApiController do
 
     with {:ok, wage} <- Input.parse_wage(wage),
          {:ok, year} <- parse_year(params["year"]),
+         {:ok, month} <- parse_month(params["month"]),
          {:ok, children} <- parse_children(params["children"]) do
       case Payslip.calculate(%{
              wage: wage,
@@ -33,6 +36,7 @@ defmodule PayrollApiWeb.ApiController do
              citizenship: parse_citizenship(params["citizenship"]),
              age_60_plus: parse_bool(params["age_60_plus"], false),
              year: year,
+             month: month,
              married: married,
              spouse_eligible: parse_bool(params["spouse_eligible"], false),
              children: children
@@ -41,7 +45,6 @@ defmodule PayrollApiWeb.ApiController do
         {:error, reason} -> render_error(conn, reason)
       end
     else
-      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -55,20 +58,22 @@ defmodule PayrollApiWeb.ApiController do
     include_hrdf = parse_bool(params["include_hrdf"], true)
     hrdf_category = parse_hrdf_category(params["hrdf_category"])
 
-    with {:ok, year} <- parse_year(params["year"]) do
+    with {:ok, year} <- parse_year(params["year"]),
+         {:ok, month} <- parse_month(params["month"]) do
       case Payslip.calculate_bulk(%{
              employees: employees,
              include_hrdf: include_hrdf,
              hrdf_category: hrdf_category,
              citizenship: parse_citizenship(params["citizenship"]),
              age_60_plus: parse_bool(params["age_60_plus"], false),
-             year: year
+             year: year,
+             month: month
            }) do
         {:ok, result} -> json(conn, %{success: true, data: result})
         {:error, reason} -> render_error(conn, reason)
       end
     else
-      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -79,10 +84,11 @@ defmodule PayrollApiWeb.ApiController do
   @doc "GET /api/v1/payslip.pdf?wage=5000 — download payslip as PDF"
   def payslip_pdf(conn, params) do
     with {:ok, wage} <- parse_wage_param(params),
-         {:ok, year} <- parse_year(params["year"]) do
+         {:ok, year} <- parse_year(params["year"]),
+         {:ok, month} <- parse_month(params["month"]) do
       include_hrdf = parse_bool(params["include_hrdf"], true)
 
-      case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf, year: year}) do
+      case Payslip.calculate(%{wage: wage, include_hrdf: include_hrdf, year: year, month: month}) do
         {:ok, result} ->
           pdf = PayrollApi.Pdf.payslip(result)
 
@@ -98,7 +104,6 @@ defmodule PayrollApiWeb.ApiController do
           render_error(conn, reason)
       end
     else
-      {:error, :unsupported_year} -> render_error(conn, :unsupported_year)
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -146,6 +151,21 @@ defmodule PayrollApiWeb.ApiController do
 
   defp parse_year(_), do: {:error, :unsupported_year}
 
+  # `month` states the period within `year` (1-12). Omitted means "no period
+  # stated" — `Rates.rates/2` keeps its no-check behaviour. See PAY-009.
+  defp parse_month(nil), do: {:ok, nil}
+  defp parse_month(m) when is_integer(m) and m in 1..12, do: {:ok, m}
+  defp parse_month(m) when is_integer(m), do: {:error, :invalid_month}
+
+  defp parse_month(m) when is_binary(m) do
+    case Integer.parse(m) do
+      {n, ""} when n in 1..12 -> {:ok, n}
+      _ -> {:error, :invalid_month}
+    end
+  end
+
+  defp parse_month(_), do: {:error, :invalid_month}
+
   defp parse_bool(nil, default), do: default
   defp parse_bool("false", _), do: false
   defp parse_bool(false, _), do: false
@@ -189,6 +209,12 @@ defmodule PayrollApiWeb.ApiController do
   defp reason_to_message(:invalid_children), do: "children must be a non-negative integer"
   defp reason_to_message(:invalid_input), do: "invalid input"
   defp reason_to_message(:unsupported_year), do: "unsupported year"
+  defp reason_to_message(:invalid_month), do: "month must be an integer 1-12"
+
+  defp reason_to_message(:period_not_covered),
+    do:
+      "rates for this year/month are not covered — the transcribed tables are only valid from June 2026"
+
   defp reason_to_message(:bulk_too_large), do: "bulk request exceeds maximum of 500 employees"
   defp reason_to_message(other), do: inspect(other)
 end

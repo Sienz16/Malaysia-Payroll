@@ -109,4 +109,33 @@ defmodule PayrollApi.Statutory.RatesTest do
     assert Rates.round_money(99.999) == 100.0
     assert Rates.round_money(10.555) == 10.56
   end
+
+  # PAY-009: the loaded tables (SOCSO incl. SKBBK) are only correct from
+  # 1 June 2026. `rates/1` alone is unchanged ("2026 as current law"); stating
+  # a period via `rates/2` for a period the tables don't cover must refuse
+  # rather than silently return SOCSO as if SKBBK applied.
+  test "rates/2: period on/after 1 June 2026 returns the snapshot" do
+    assert %{year: 2026} = Rates.rates(2026, 6)
+    assert %{year: 2026} = Rates.rates(2026, 12)
+  end
+
+  test "rates/2: period before 1 June 2026 is refused, not silently wrong" do
+    assert Rates.rates(2026, 5) == {:error, :period_not_covered}
+    assert Rates.rates(2026, 1) == {:error, :period_not_covered}
+    assert Rates.rates(2025, 12) == {:error, :period_not_covered}
+  end
+
+  test "rates/2: invalid month is rejected" do
+    assert Rates.rates(2026, 0) == {:error, :invalid_month}
+    assert Rates.rates(2026, 13) == {:error, :invalid_month}
+  end
+
+  test "rates/2: unsupported year is still refused with month given" do
+    assert Rates.rates(2099, 6) == {:error, :unsupported_year}
+  end
+
+  test "rates/1 without a month keeps prior behaviour (no period check)" do
+    assert Rates.rates(2026) == Rates.rates(2026, nil)
+    assert %{year: 2026} = Rates.rates(2026)
+  end
 end

@@ -20,7 +20,7 @@ defmodule PayrollApiWeb.CalculatorLiveTest do
     |> render_submit()
 
     assert has_element?(view, "#calculation-result")
-    assert view |> element("#calculation-result") |> render() =~ "4305.35"
+    assert view |> element("#calculation-result") |> render() =~ "4268.20"
   end
 
   test "submitting an invalid wage renders an error, not a crash", %{conn: conn} do
@@ -44,7 +44,7 @@ defmodule PayrollApiWeb.CalculatorLiveTest do
     |> render_submit()
 
     assert has_element?(view, "#calculation-result")
-    assert view |> element("#calculation-result") |> render() =~ "4305.35"
+    assert view |> element("#calculation-result") |> render() =~ "4268.20"
     refute has_element?(view, "#calculator-error")
   end
 

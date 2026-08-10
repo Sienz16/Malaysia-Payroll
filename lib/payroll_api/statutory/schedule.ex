@@ -22,6 +22,11 @@ defmodule PayrollApi.Statutory.Schedule do
     (Skim Kemalangan Bukan Bencana Kerja / Lindung 24 Jam), the 24-hour
     non-occupational accident scheme mandatory from 1 June 2026.
 
+  * EIS — PERKESO Act 800 (Employment Insurance System) Second Schedule
+    contribution table, wage ceiling RM6,000, equal employer/employee shares
+    per band. Transcribed from the source PDF's rendered page image, since
+    that PDF has no text layer (see `priv/statutory/tools/extract_eis.py`).
+
   Every table was validated at transcription time: printed component amounts
   sum to their printed totals, and bands tile their range with no gap or
   overlap. See `test/statutory/schedule_test.exs` for the known-answer checks
@@ -33,6 +38,7 @@ defmodule PayrollApi.Statutory.Schedule do
   @epf_parts %{a: "part_a.csv", c: "part_c.csv", e: "part_e.csv"}
   @epf_dir Path.join(@priv, "epf_third_schedule_2025-10")
   @socso_file Path.join([@priv, "socso_act4_2026-06", "rates.csv"])
+  @eis_file Path.join([@priv, "eis_act800_2024-11", "rates.csv"])
 
   # Parsing runs inside self-invoking closures because module attributes are
   # evaluated at compile time, before this module's own functions exist.
@@ -65,11 +71,16 @@ defmodule PayrollApi.Statutory.Schedule do
                  {to, c1_er, c1_inv, c1_skbbk, c2_er, c2_skbbk}
                end)
 
+  # EIS rows: {upper bound in sen or nil for the open-ended top row, employer, employee}.
+  @eis_bands @load_rows.(@eis_file)
+             |> Enum.map(fn [to, employer, employee] -> {to, employer, employee} end)
+
   for file <- Map.values(@epf_parts) do
     @external_resource Path.join(@epf_dir, file)
   end
 
   @external_resource @socso_file
+  @external_resource @eis_file
 
   @epf_table_ceiling @epf_bands[:a] |> List.last() |> elem(0)
 
@@ -84,6 +95,9 @@ defmodule PayrollApi.Statutory.Schedule do
 
   @doc "Number of SOCSO rows loaded."
   def socso_row_count, do: length(@socso_bands)
+
+  @doc "Number of EIS rows loaded."
+  def eis_row_count, do: length(@eis_bands)
 
   @doc """
   EPF contribution for `wage_sen` from Third Schedule part `:a`, `:c`, or `:e`.
@@ -129,5 +143,18 @@ defmodule PayrollApi.Statutory.Schedule do
     Enum.find(@socso_bands, fn {max, _, _, _, _, _} ->
       is_nil(max) or wage_sen <= max
     end)
+  end
+
+  @doc """
+  EIS contribution for `wage_sen` from the Act 800 Second Schedule.
+
+  Returns `%{employer: sen, employee: sen}`. Equal shares at every band; the
+  final row is open-ended above RM6,000, so every wage resolves to a band.
+  """
+  def eis(wage_sen) when is_integer(wage_sen) do
+    {_max, employer, employee} =
+      Enum.find(@eis_bands, fn {max, _, _} -> is_nil(max) or wage_sen <= max end)
+
+    %{employer: employer, employee: employee}
   end
 end

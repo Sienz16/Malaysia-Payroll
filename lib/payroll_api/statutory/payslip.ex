@@ -62,7 +62,8 @@ defmodule PayrollApi.Statutory.Payslip do
   defp calculate_bulk_rows(employees, opts) do
     defaults = %{
       include_hrdf: Map.get(opts, :include_hrdf, true),
-      year: Map.get(opts, :year, 2026)
+      year: Map.get(opts, :year, 2026),
+      month: Map.get(opts, :month)
     }
 
     results =
@@ -129,8 +130,9 @@ defmodule PayrollApi.Statutory.Payslip do
 
   defp do_calculate(wage, opts) do
     year = opts[:year] || 2026
+    month = Map.get(opts, :month)
 
-    with rates when is_map(rates) <- Rates.rates(year) do
+    with rates when is_map(rates) <- Rates.rates(year, month) do
       calculate_with_rates(wage, opts, year, rates)
     else
       {:error, reason} -> {:error, reason}

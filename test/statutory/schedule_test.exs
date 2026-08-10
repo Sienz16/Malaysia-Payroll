@@ -104,4 +104,31 @@ defmodule PayrollApi.Statutory.ScheduleTest do
       end
     end
   end
+
+  describe "EIS Act 800 table" do
+    test "has 65 rows and the last one is open-ended" do
+      assert Schedule.eis_row_count() == 65
+
+      ceiling = Schedule.eis(600_000)
+      assert Schedule.eis(100_000_000) == ceiling
+    end
+
+    test "equal employer/employee shares at known bands" do
+      # Row 1: wages up to RM30 -> 5 sen each.
+      assert Schedule.eis(3000) == %{employer: 5, employee: 5}
+      # RM5,000 row -> RM9.90 each.
+      assert Schedule.eis(500_000) == %{employer: 990, employee: 990}
+      # Open-ended row above RM6,000 -> RM11.90 each.
+      assert Schedule.eis(600_001) == %{employer: 1190, employee: 1190}
+    end
+
+    test "contributions never decrease as wages rise" do
+      shares =
+        1..600
+        |> Enum.map(&Schedule.eis(&1 * 1000))
+        |> Enum.map(&{&1.employer, &1.employee})
+
+      assert shares == Enum.sort(shares), "share not monotonic"
+    end
+  end
 end

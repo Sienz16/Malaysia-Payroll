@@ -37,6 +37,30 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert json_response(conn, 400)["error"]["message"] =~ "unsupported year"
   end
 
+  # PAY-009: stating a pre-June-2026 period must refuse, not silently return
+  # SOCSO computed as if SKBBK applied.
+  test "GET /api/v1/rates refuses a pre-June-2026 period", %{conn: conn} do
+    conn = get(auth(conn), ~p"/api/v1/rates?year=2026&month=5")
+    assert json_response(conn, 400)["error"]["message"] =~ "not covered"
+  end
+
+  test "GET /api/v1/rates accepts a covered period", %{conn: conn} do
+    body = get(auth(conn), ~p"/api/v1/rates?year=2026&month=6") |> json_response(200)
+    assert body["success"] == true
+  end
+
+  test "GET /api/v1/rates rejects an out-of-range month", %{conn: conn} do
+    conn = get(auth(conn), ~p"/api/v1/rates?year=2026&month=13")
+    assert json_response(conn, 400)["error"]["message"] =~ "month"
+  end
+
+  test "POST /api/v1/calculate-payslip refuses a pre-June-2026 period", %{conn: conn} do
+    conn =
+      post(conn, ~p"/api/v1/calculate-payslip", %{"wage" => 5000, "year" => 2026, "month" => 1})
+
+    assert json_response(conn, 400)["error"]["message"] =~ "not covered"
+  end
+
   test "POST /api/v1/calculate-payslip with wage", %{conn: conn} do
     conn = post(conn, ~p"/api/v1/calculate-payslip", %{"wage" => 5000})
 
