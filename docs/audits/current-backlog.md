@@ -26,7 +26,7 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | API-001 | High | verified | Bulk calculation now shares wage normalization, returns per-row errors, and enforces a 500-employee maximum. | One shared validation boundary; per-row errors; explicit maximum batch size; no crashes on valid JSON shapes. | Malformed and maximum-size request tests pass (domain + HTTP); `mix precommit` passes |
 | SEC-003 | High | verified | Removed plaintext in-memory API keys; public stateless API does not use credentials. | Reintroduce only durable hashed keys with accounts or quotas. | No key modules/routes remain |
 | SEC-004 | High | in_progress | Rate limiter is a single-node atomic GenServer with rolling-window retry duration; restart still resets counters. | Use durable or explicitly single-node atomic counters matching documented quota semantics. | Concurrent quota, key isolation, and retry-window tests pass; restart behavior documented but not directly tested |
-| API-002 | High | in_progress | PDF content stream and xref are now parser-valid, but payslip identity, period, numbering, and real endpoint parser test remain absent. | Produce parser-valid PDF with extractable payslip text and required payroll identity fields. | `pdfinfo`/`pdftotext` manual check passes; automated parser test pending |
+| API-002 | High | in_progress | PDF content stream and xref are parser-valid; automated endpoint extraction now verifies readable payslip text. Payslip identity, period, and numbering remain absent. | Produce parser-valid PDF with extractable payslip text and required payroll identity fields. | Endpoint `pdftotext` test passes; required payroll identity fields pending |
 
 ## Important Follow-Up
 
@@ -48,7 +48,7 @@ Source: [`snapshots/2026-08-08-initial-project-audit.md`](snapshots/2026-08-08-i
 | OPS-002 | Medium | open | Claimed release/systemd deployment lacks repository artifacts, CI, runbook, or rollback process. | Add reproducible release/deployment artifacts or remove claims. | CI release smoke test |
 | OPS-003 | Medium | open | Metrics exist without reporter; security/payroll audit events are absent. | Choose reporter and actionable signals, or remove unused telemetry until needed; persist security audit events before production. | Reporter smoke test and audit-event tests |
 | TEST-001 | High | open | Tests validate internal formulas rather than official statutory results. | Add release-gating known-answer and boundary suites from official sources. | Focused statutory suites plus `mix precommit` |
-| TEST-002 | Medium | in_progress | Keys, limiter, LiveView, PDF validity, malformed bulk input, and OpenAPI drift lacked tests. | Add focused boundary tests before expanding unit-test volume. | Added: key authorization (8), rate limiter (3), LiveView (7), money (10), OpenAPI contract (6), malformed input, zero-wage; PDF parser test still pending |
+| TEST-002 | Medium | in_progress | Rate limiter, LiveView, PDF validity, malformed bulk input, and OpenAPI drift gained focused tests. | Add focused boundary tests before expanding unit-test volume. | Added: IP rate limiter, LiveView, money, OpenAPI contract, malformed input, zero-wage, and PDF parser tests |
 | TEST-003 | Medium | verified | Removed unreachable `humanize/1` warning and restored fallback handling. | Remove or make clause reachable without suppressing warning. | `mix precommit` exits 0 |
 
 ## Cleanup Candidates

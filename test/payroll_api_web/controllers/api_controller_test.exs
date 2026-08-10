@@ -119,6 +119,18 @@ defmodule PayrollApiWeb.ApiControllerTest do
     assert body =~ "Tj"
   end
 
+  test "GET /api/v1/payslip.pdf is readable by pdftotext", %{conn: conn} do
+    conn = get(conn, ~p"/api/v1/payslip.pdf?wage=5000")
+    path = Path.join(System.tmp_dir!(), "payroll-api-#{System.unique_integer([:positive])}.pdf")
+    File.write!(path, conn.resp_body)
+    on_exit(fn -> File.rm(path) end)
+
+    {text, 0} = System.cmd("pdftotext", [path, "-"])
+
+    assert text =~ "MALAYSIA PAYROLL"
+    assert text =~ "NET PAY"
+  end
+
   test "GET /api/v1/payslip.pdf missing wage → 400", %{conn: conn} do
     conn = get(auth(conn), ~p"/api/v1/payslip.pdf")
     assert json_response(conn, 400)["error"]["message"] =~ "wage"
